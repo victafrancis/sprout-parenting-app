@@ -1,0 +1,49 @@
+# v0 runtime files (should only exist in preview, not in git)
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# --- Dependencies / build output ---
+node_modules/
+.next/
+.turbo/
+out/
+dist/
+build/
+
+# --- Environment & secrets (security) ---
+.env
+.env.*
+!.env.example
+.envrc
+*.local
+
+# Private keys / certificates
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Cloud / tooling auth files
+.aws/
+.npmrc
+
+# --- Logs, caches, and temp ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.cache/
+.eslintcache
+coverage/
+tmp/
+temp/
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
