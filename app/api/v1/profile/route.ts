@@ -56,9 +56,7 @@ export async function PATCH(request: Request) {
       return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
     }
 
-    if (mode.isDemo) {
-      return fail(403, 'FORBIDDEN', 'Writes are disabled in demo mode')
-    }
+    const useDemoModeForWrite = !mode.isAuthenticated
 
     const body = await request.json()
     const parsed = patchSchema.safeParse(body)
@@ -72,7 +70,7 @@ export async function PATCH(request: Request) {
       milestones: parsed.data.milestones,
       activeSchemas: parsed.data.activeSchemas,
       interests: parsed.data.interests,
-      useDemoMode: false,
+      useDemoMode: useDemoModeForWrite,
     })
 
     return ok(updatedProfile)

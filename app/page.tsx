@@ -33,7 +33,8 @@ export default function Page() {
   const [loginDialogOpen, setLoginDialogOpen] = useState(false)
   const [passcode, setPasscode] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [globalAuthError, setGlobalAuthError] = useState<string | null>(null)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
 
   useEffect(() => {
@@ -62,7 +63,8 @@ export default function Page() {
   async function handleLogin() {
     try {
       setIsAuthenticating(true)
-      setAuthError(null)
+      setLoginError(null)
+      setGlobalAuthError(null)
 
       const status = await loginWithPasscode({
         passcode,
@@ -74,7 +76,7 @@ export default function Page() {
       setPasscode('')
       window.location.reload()
     } catch (error) {
-      setAuthError(
+      setLoginError(
         error instanceof Error ? error.message : 'Unable to login right now',
       )
     } finally {
@@ -84,12 +86,12 @@ export default function Page() {
 
   async function handleLogout() {
     try {
-      setAuthError(null)
+      setGlobalAuthError(null)
       await logout()
       setAuthMode('demo')
       window.location.reload()
     } catch (error) {
-      setAuthError(
+      setGlobalAuthError(
         error instanceof Error ? error.message : 'Unable to logout right now',
       )
     }
@@ -117,7 +119,7 @@ export default function Page() {
           <button
             type="button"
             onClick={() => {
-              setAuthError(null)
+              setLoginError(null)
               setLoginDialogOpen(true)
             }}
           >
@@ -128,10 +130,10 @@ export default function Page() {
         )}
       </header>
 
-      {authError ? (
+      {globalAuthError ? (
         <div className="px-4 pt-3 max-w-2xl mx-auto w-full">
           <p className="text-sm text-destructive" role="alert">
-            {authError}
+            {globalAuthError}
           </p>
         </div>
       ) : null}
@@ -201,10 +203,16 @@ export default function Page() {
                 type="password"
                 value={passcode}
                 onChange={(event) => {
+                  setLoginError(null)
                   setPasscode(event.target.value)
                 }}
                 placeholder="Enter passcode"
               />
+              {loginError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {loginError}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex items-center space-x-2">
@@ -224,6 +232,7 @@ export default function Page() {
               type="button"
               variant="outline"
               onClick={() => {
+                setLoginError(null)
                 setLoginDialogOpen(false)
               }}
               disabled={isAuthenticating}

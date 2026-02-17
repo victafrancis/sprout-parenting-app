@@ -105,8 +105,8 @@ If OpenRouter is unavailable (missing key, timeout, invalid response, or request
 
 The app supports two runtime experiences:
 
-- **Demo Mode (default):** mock read behavior, writes blocked
-- **Authenticated Mode:** real AWS-backed reads/writes (when `DATA_MODE=aws`)
+- **Demo Mode (default):** mock read/write behavior (in-memory only)
+- **Authenticated Mode:** real AWS-backed reads/writes when `DATA_MODE=aws`
 
 ### User flow
 
@@ -140,8 +140,8 @@ The app supports two runtime experiences:
 - Passcode validation uses timing-safe comparison.
 - Signed session cookie prevents tampering from granting admin access.
 - API routes still enforce mode checks server-side (defense in depth):
-  - demo: reads allowed, writes blocked
-  - authenticated: reads and writes allowed
+  - demo: reads and writes use mock repositories (in-memory only)
+  - authenticated: reads and writes follow selected data mode (`aws` or `mock`)
   - unauthenticated: blocked
 
 For production on Amplify, store `ADMIN_PASSCODE` and `SESSION_SECRET` in Amplify environment variables.
@@ -164,7 +164,17 @@ Profile updates use append-only merge with case-insensitive dedupe for:
 - `activeSchemas`
 - `interests`
 
-Demo mode still blocks all writes.
+In demo mode, profile candidate apply writes to in-memory mock storage only.
+
+### Write behavior by auth mode and data mode
+
+- `mode=authenticated` + `DATA_MODE=aws`:
+  - reads and writes go to AWS repositories (DynamoDB/S3-backed)
+- `mode=authenticated` + `DATA_MODE=mock`:
+  - reads and writes go to mock repositories (in-memory)
+- `mode=demo` (regardless of `DATA_MODE`):
+  - reads and writes go to mock repositories (in-memory)
+  - this enables local/demo testing of daily log creation, OpenRouter extraction, and profile candidate apply without AWS writes
 
 ---
 

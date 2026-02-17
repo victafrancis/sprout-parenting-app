@@ -233,3 +233,85 @@ Updated the profile data model to use `birthDate` as the source of truth and der
   - `lib/server/auth/session.ts` (safe null-return behavior when secret is absent)
   - `app/api/auth/login/route.ts` (clear `AUTH_DISABLED` response)
   - `README.md` (documented demo-only fallback behavior)
+
+## Latest Session Update (Demo Writes to In-Memory Mock)
+- Restored demo-mode write capability for local/testing workflows while preserving authenticated AWS writes.
+
+### Route policy updates
+- Updated write paths to use auth-aware repository routing instead of hard-blocking demo mode writes:
+  - `app/api/v1/daily-logs/route.ts`
+    - removed unconditional `mode.isDemo` 403 on `POST`
+    - added `useDemoModeForWrite = !mode.isAuthenticated`
+    - profile context fetch for extraction now uses `useDemoModeForWrite`
+    - create log write now uses `useDemoModeForWrite`
+  - `app/api/v1/profile/route.ts`
+    - removed unconditional `mode.isDemo` 403 on `PATCH`
+    - added `useDemoModeForWrite = !mode.isAuthenticated`
+    - profile candidate apply now uses `useDemoModeForWrite`
+
+### Effective behavior after fix
+- `authenticated + DATA_MODE=aws` → AWS-backed reads/writes
+- `authenticated + DATA_MODE=mock` → mock in-memory reads/writes
+- `demo` (regardless of `DATA_MODE`) → mock in-memory reads/writes
+- `unauthenticated` → blocked
+
+This restores the intended demo workflow: create daily logs in demo mode, call OpenRouter extraction, review candidates, and apply profile updates without writing to AWS.
+
+### Documentation updates
+- Updated `README.md` to reflect real behavior:
+  - demo mode now documented as in-memory mock read/write
+  - security notes now clarify demo uses mock repos and authenticated follows configured data mode
+  - added explicit auth/data-mode write matrix
+
+### Validation
+- Ran `npx tsc --noEmit`.
+- Environment terminal output remained noisy/unreliable, but no explicit TypeScript errors were surfaced.
+
+## Latest Session Update (API 404 HTML + JSON Parse Error)
+- Investigated browser/runtime error: `Unexpected token '<'` when calling API routes.
+- Root symptom observed via curl:
+  - `/api/v1/weekly-plan?childId=Yumi` returned Next.js HTML 404 page (not JSON)
+  - `/api/v1/profile?childId=Yumi` also returned HTML 404
+- Build analysis confirmed API routes are present and compiled:
+  - `npm run build` route output included:
+    - `/api/v1/daily-logs`
+    - `/api/v1/profile`
+    - `/api/v1/weekly-plan`
+
+### Fixes applied
+- Improved client-side API robustness for non-JSON responses:
+  - file: `lib/api/client.ts`
+  - `fetchJson` now reads text first and detects non-JSON payloads
+  - returns clear errors for HTML/empty/non-JSON responses instead of JSON parse crash
+  - prevents opaque `Unexpected token '<'` errors in UI
+- Adjusted dev launcher to avoid Turbo dev-mode API 404 behavior encountered in this environment:
+  - file: `scripts/dev-with-profile.mjs`
+  - changed Next launch from `next dev --turbo` to `next dev`
+
+### Follow-up validation notes
+- `npm run build` succeeded and listed all API routes as dynamic handlers.
+- To apply the launcher change, restart local dev server (`npm run dev`) before re-testing API endpoints in browser.
+
+## Latest Session Update (Login Error Placement)
+- Fixed login UX so incorrect passcode errors appear inside the login dialog, directly under the passcode field.
+
+### UI behavior change
+- Before:
+  - login failures updated `authError`, which rendered in a page-level error area above main content
+  - users did not see the message in the modal they were interacting with
+- After:
+  - introduced `loginError` for dialog-specific failures
+  - introduced `globalAuthError` for non-dialog auth issues (e.g., logout)
+  - passcode failure now renders inside dialog under input
+
+### File updated
+- `app/page.tsx`
+  - replaced single `authError` with `loginError` + `globalAuthError`
+  - login failures now set `loginError`
+  - logout failures now set `globalAuthError`
+  - clears `loginError` on passcode change, dialog open, and cancel
+  - renders `loginError` inline under passcode input
+
+### Validation
+- Ran `npx tsc --noEmit`.
+- Terminal output in this environment remains noisy, but no explicit TypeScript errors were surfaced.

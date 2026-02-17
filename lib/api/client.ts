@@ -9,6 +9,22 @@ import type {
   WeeklyPlanMarkdownPayload,
 } from '@/lib/types/domain'
 
+function buildNonJsonErrorMessage(url: string, status: number, bodyText: string) {
+  const trimmedBody = bodyText.trim()
+  const isHtmlResponse =
+    trimmedBody.startsWith('<!DOCTYPE') || trimmedBody.startsWith('<html')
+
+  if (isHtmlResponse) {
+    return `Request failed: ${url} returned ${status} with HTML instead of JSON. This usually means the API route is unavailable.`
+  }
+
+  if (trimmedBody.length === 0) {
+    return `Request failed: ${url} returned ${status} with an empty response body.`
+  }
+
+  return `Request failed: ${url} returned ${status} with a non-JSON response.`
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit) {
   const response = await fetch(url, {
     ...init,
@@ -19,7 +35,26 @@ async function fetchJson<T>(url: string, init?: RequestInit) {
     cache: 'no-store',
   })
 
-  const payload = (await response.json()) as ApiResponse<T>
+  const responseText = await response.text()
+  const contentType = response.headers.get('content-type') || ''
+  const shouldParseAsJson =
+    contentType.includes('application/json') ||
+    responseText.trim().startsWith('{') ||
+    responseText.trim().startsWith('[')
+
+  if (!shouldParseAsJson) {
+    throw new Error(buildNonJsonErrorMessage(url, response.status, responseText))
+  }
+
+  let payload: ApiResponse<T>
+
+  try {
+    payload = JSON.parse(responseText) as ApiResponse<T>
+  } catch {
+    throw new Error(
+      `Request failed: ${url} returned invalid JSON (status ${response.status}).`,
+    )
+  }
 
   if (!response.ok || payload.error) {
     const message = payload.error?.message || 'Request failed'

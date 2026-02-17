@@ -58,9 +58,7 @@ export async function POST(request: Request) {
       return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
     }
 
-    if (mode.isDemo) {
-      return fail(403, 'FORBIDDEN', 'Writes are disabled in demo mode')
-    }
+    const useDemoModeForWrite = !mode.isAuthenticated
 
     const body = await request.json()
     const parsed = postSchema.safeParse(body)
@@ -71,7 +69,7 @@ export async function POST(request: Request) {
 
     const profile = await getProfileService({
       childId: parsed.data.childId,
-      useDemoMode: false,
+      useDemoMode: useDemoModeForWrite,
     })
 
     const extractionResult = await extractDailyLogInsights({
@@ -84,7 +82,7 @@ export async function POST(request: Request) {
       childId: parsed.data.childId,
       rawText: parsed.data.rawText,
       extractionResult,
-      useDemoMode: false,
+      useDemoMode: useDemoModeForWrite,
     })
 
     return created({
