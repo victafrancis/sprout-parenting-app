@@ -59,7 +59,14 @@ export type UpdateProfileCandidatesInput = {
 
 export type WeeklyPlanMarkdownPayload = {
   childId: string
-  week: string
+  selectedObjectKey: string | null
+  availablePlans: WeeklyPlanListItem[]
   markdown: string
   source: 'mock' | 's3'
+}
+
+export type WeeklyPlanListItem = {
+  objectKey: string
+  displayName: string
+  lastModified: string | null
 }

@@ -5,7 +5,7 @@ import { getWeeklyPlanService } from '@/lib/server/services/weekly-plan.service'
 
 const querySchema = z.object({
   childId: z.string().min(1).default('Yumi'),
-  week: z.string().optional(),
+  objectKey: z.string().min(1).optional(),
 })
 
 export async function GET(request: Request) {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const parsed = querySchema.safeParse({
       childId: searchParams.get('childId') ?? 'Yumi',
-      week: searchParams.get('week') ?? undefined,
+      objectKey: searchParams.get('objectKey') ?? undefined,
     })
 
     if (!parsed.success) {
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const mode = await getRequestMode()
     const weeklyPlan = await getWeeklyPlanService({
       childId: parsed.data.childId,
-      week: parsed.data.week,
+      objectKey: parsed.data.objectKey,
       useDemoMode: mode.isDemo,
     })
 

@@ -78,11 +78,11 @@ export async function updateProfileWithCandidates(input: {
   return payload.data
 }
 
-export async function getWeeklyPlan(params?: { childId?: string; week?: string }) {
+export async function getWeeklyPlan(params?: { childId?: string; objectKey?: string }) {
   const search = new URLSearchParams()
   search.set('childId', params?.childId || 'Yumi')
-  if (params?.week) {
-    search.set('week', params.week)
+  if (params?.objectKey) {
+    search.set('objectKey', params.objectKey)
   }
 
   const payload = await fetchJson<WeeklyPlanMarkdownPayload>(

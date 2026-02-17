@@ -37,6 +37,14 @@ Bucket: `sprout-knowledge-base`
 - `development_guides/` → reference markdown files (including `baby-development-report.md`)
 - `plans/` → generated weekly plan markdown artifacts
 
+### Weekly plan retrieval behavior (current app)
+
+- The weekly-plan API accepts `childId` and optional `objectKey`.
+- The app lists markdown files under `plans/<childId>/`.
+- When `objectKey` is not provided, it loads the latest markdown file by S3 `LastModified`.
+- The Weekly Plan UI shows all available markdown files in a dropdown and lets you switch between them.
+- If no markdown files exist for the prefix, the UI shows: `No weekly plans generated yet.`
+
 ---
 
 ## Run Modes

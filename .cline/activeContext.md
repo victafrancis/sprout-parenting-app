@@ -79,3 +79,59 @@ Updated the profile data model to use `birthDate` as the source of truth and der
   - documented fallback behavior when OpenRouter is unavailable
   - clarified that `DATA_MODE=mock` can still use real OpenRouter extraction
   - added explicit mock persistence caveat (in-memory, resets on restart/hot reload)
+
+## Latest Session Update
+- Implemented filename-agnostic weekly plan retrieval and selection (no week selector dependency).
+- Updated weekly plan domain payload:
+  - file: `lib/types/domain.ts`
+  - `WeeklyPlanMarkdownPayload` now includes:
+    - `selectedObjectKey`
+    - `availablePlans`
+    - `markdown`
+    - `source`
+  - added `WeeklyPlanListItem` (`objectKey`, `displayName`, `lastModified`)
+- Updated weekly plan repository contract:
+  - file: `lib/server/repositories/types.ts`
+  - `getWeeklyPlanMarkdown({ childId, objectKey? })`
+- Updated AWS weekly plan repository:
+  - file: `lib/server/repositories/aws/weekly-plan.repo.ts`
+  - lists objects under `plans/<childId>/` using `ListObjectsV2`
+  - filters markdown files (`.md`)
+  - sorts by `LastModified` descending
+  - defaults to latest object when no `objectKey` provided
+  - fetches selected markdown via `GetObjectCommand`
+  - returns empty-state payload when no plan files exist
+- Updated mock weekly plan repository:
+  - file: `lib/server/repositories/mock/weekly-plan.repo.ts`
+  - exposes two selectable local plans:
+    - `plans/Yumi/test-weekly-plan-2.md`
+    - `plans/Yumi/weekly-plan.md`
+  - defaults to latest mock entry and loads selected markdown from `lib/data`
+- Updated service and API route:
+  - file: `lib/server/services/weekly-plan.service.ts`
+    - removed date/week fallback logic
+    - now passes through optional `objectKey`
+  - file: `app/api/v1/weekly-plan/route.ts`
+    - query now accepts `objectKey` instead of `week`
+- Updated API client:
+  - file: `lib/api/client.ts`
+  - `getWeeklyPlan` now supports optional `objectKey`
+- Updated Weekly Plan UI:
+  - file: `components/WeeklyPlan.tsx`
+  - added top dropdown for available plans
+  - initial load fetches latest plan by default
+  - changing dropdown reloads selected markdown
+  - empty state shows: `No weekly plans generated yet.`
+  - keeps loading and error states
+
+## Validation
+- TypeScript verification command was executed but terminal output was unreliable in this environment.
+- No residual `week`-based weekly-plan query usages remain in the code search (`searchParams.get('week')`, `selectedWeek`, or `getWeeklyPlan(...week...)`).
+
+## Latest Documentation Note
+- Applied minimal docs-only correction in `README.md` to reflect current weekly-plan retrieval behavior:
+  - API uses optional `objectKey` selector (not `week`)
+  - plans are listed from `plans/<childId>/`
+  - default selection is latest markdown by `LastModified`
+  - UI supports dropdown switching and empty-state text
+- No `architecture.md` change made to avoid unnecessary edits.

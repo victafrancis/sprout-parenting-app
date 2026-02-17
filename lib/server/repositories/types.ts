@@ -21,8 +21,5 @@ export interface DailyLogRepository {
 }
 
 export interface WeeklyPlanRepository {
-  getWeeklyPlanMarkdown(input: {
-    childId: string
-    week: string
-  }): Promise<WeeklyPlanMarkdownPayload>
+  getWeeklyPlanMarkdown(input: { childId: string; objectKey?: string }): Promise<WeeklyPlanMarkdownPayload>
 }
