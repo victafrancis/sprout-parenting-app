@@ -38,6 +38,22 @@ function mergeUniqueTextValues(existingValues: string[], incomingValues: string[
   return Array.from(normalizedExistingValues.values())
 }
 
+function normalizeTextValue(value: string) {
+  return value.trim().toLowerCase()
+}
+
+function removeTextValue(existingValues: string[], valueToRemove: string) {
+  const normalizedValueToRemove = normalizeTextValue(valueToRemove)
+
+  if (!normalizedValueToRemove) {
+    return existingValues
+  }
+
+  return existingValues.filter(
+    (existingValue) => normalizeTextValue(existingValue) !== normalizedValueToRemove,
+  )
+}
+
 export class MockProfileRepository implements ProfileRepository {
   async getProfile(childId: string): Promise<ChildProfile | null> {
     const fallbackBirthDate = createApproxBirthDateFromAgeMonths(0)
@@ -73,6 +89,41 @@ export class MockProfileRepository implements ProfileRepository {
       inMemoryProfile.interests,
       input.interests,
     )
+
+    return {
+      ...inMemoryProfile,
+      name: inMemoryProfile.name || input.childId,
+      ageMonths: calculateAgeMonthsFromBirthDate(inMemoryProfile.birthDate),
+    }
+  }
+
+  async removeProfileValue(input: {
+    childId: string
+    field: 'milestones' | 'activeSchemas' | 'interests'
+    value: string
+  }): Promise<ChildProfile> {
+    void input.childId
+
+    if (input.field === 'milestones') {
+      inMemoryProfile.milestones = removeTextValue(
+        inMemoryProfile.milestones,
+        input.value,
+      )
+    }
+
+    if (input.field === 'activeSchemas') {
+      inMemoryProfile.activeSchemas = removeTextValue(
+        inMemoryProfile.activeSchemas,
+        input.value,
+      )
+    }
+
+    if (input.field === 'interests') {
+      inMemoryProfile.interests = removeTextValue(
+        inMemoryProfile.interests,
+        input.value,
+      )
+    }
 
     return {
       ...inMemoryProfile,

@@ -29,9 +29,28 @@ export class MockDailyLogRepository implements DailyLogRepository {
       timeLabel: 'Just now',
       entry: input.rawText,
       createdAt,
+      storageKey: `MOCK#${Date.now()}`,
     }
 
     inMemoryLogs.unshift(newLog)
     return newLog
+  }
+
+  async deleteDailyLog(input: { childId: string; storageKey: string }) {
+    void input.childId
+
+    const logIndex = inMemoryLogs.findIndex((logEntry) => {
+      if (logEntry.storageKey) {
+        return logEntry.storageKey === input.storageKey
+      }
+
+      return `MOCK#${logEntry.id}` === input.storageKey
+    })
+
+    if (logIndex === -1) {
+      return
+    }
+
+    inMemoryLogs.splice(logIndex, 1)
   }
 }

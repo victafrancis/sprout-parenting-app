@@ -8,10 +8,21 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   createDailyLog,
+  deleteDailyLog,
   getDailyLogs,
   getProfile,
   updateProfileWithCandidates,
 } from '@/lib/api/client'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Dialog,
   DialogContent,
@@ -33,6 +44,9 @@ export function DailyLog() {
   const [entries, setEntries] = useState<DailyLogEntry[]>([])
   const [logEntry, setLogEntry] = useState('')
   const [candidateReviewOpen, setCandidateReviewOpen] = useState(false)
+  const [isDeletingLog, setIsDeletingLog] = useState(false)
+  const [pendingLogDeletion, setPendingLogDeletion] =
+    useState<DailyLogEntry | null>(null)
   const [pendingCandidates, setPendingCandidates] = useState<ProfileUpdateCandidates | null>(
     null,
   )
@@ -143,6 +157,40 @@ export function DailyLog() {
     setPendingCandidates(null)
   }
 
+  async function handleConfirmDeleteLog() {
+    if (!pendingLogDeletion) {
+      return
+    }
+
+    if (!pendingLogDeletion.storageKey) {
+      setError('This log cannot be deleted because it has no storage key.')
+      setPendingLogDeletion(null)
+      return
+    }
+
+    try {
+      setIsDeletingLog(true)
+      setError(null)
+
+      await deleteDailyLog({
+        childId: 'Yumi',
+        storageKey: pendingLogDeletion.storageKey,
+      })
+
+      setEntries((previousEntries) =>
+        previousEntries.filter((entry) => {
+          return entry.storageKey !== pendingLogDeletion.storageKey
+        }),
+      )
+
+      setPendingLogDeletion(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete log entry')
+    } finally {
+      setIsDeletingLog(false)
+    }
+  }
+
   return (
     <div className="p-4 space-y-6 max-w-2xl mx-auto">
       <h2 className="text-2xl font-semibold text-balance">
@@ -191,7 +239,20 @@ export function DailyLog() {
           ) : entries.map((entry) => (
             <Card key={entry.id} className="border-border">
               <CardHeader className="p-4 pb-3">
-                <CardDescription className="text-xs">{entry.timeLabel}</CardDescription>
+                <div className="flex items-start justify-between gap-3">
+                  <CardDescription className="text-xs">{entry.timeLabel}</CardDescription>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      setPendingLogDeletion(entry)
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
                 <CardTitle className="text-sm font-medium leading-relaxed">
                   {entry.entry}
                 </CardTitle>
@@ -337,6 +398,36 @@ export function DailyLog() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(pendingLogDeletion)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingLogDeletion(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this log entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action removes the selected daily log entry.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingLog}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void handleConfirmDeleteLog()
+              }}
+              disabled={isDeletingLog}
+            >
+              {isDeletingLog ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

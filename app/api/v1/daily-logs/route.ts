@@ -5,6 +5,7 @@ import { getProfileService } from '@/lib/server/services/profile.service'
 import { extractDailyLogInsights } from '@/lib/server/services/daily-log-extraction.service'
 import {
   createDailyLogService,
+  deleteDailyLogService,
   listDailyLogsService,
 } from '@/lib/server/services/daily-log.service'
 
@@ -17,6 +18,11 @@ const getSchema = z.object({
 const postSchema = z.object({
   childId: z.string().min(1).default('Yumi'),
   rawText: z.string().min(1).max(5000),
+})
+
+const deleteSchema = z.object({
+  childId: z.string().min(1).default('Yumi'),
+  storageKey: z.string().min(1),
 })
 
 export async function GET(request: Request) {
@@ -93,5 +99,34 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/v1/daily-logs failed', error)
     return fail(500, 'INTERNAL_ERROR', 'Unable to create daily log')
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const mode = await getRequestMode()
+    if (mode.mode === 'unauthenticated') {
+      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
+    }
+
+    const useDemoModeForWrite = !mode.isAuthenticated
+
+    const body = await request.json()
+    const parsed = deleteSchema.safeParse(body)
+
+    if (!parsed.success) {
+      return fail(400, 'VALIDATION_ERROR', 'Invalid request body')
+    }
+
+    await deleteDailyLogService({
+      childId: parsed.data.childId,
+      storageKey: parsed.data.storageKey,
+      useDemoMode: useDemoModeForWrite,
+    })
+
+    return ok({ success: true })
+  } catch (error) {
+    console.error('DELETE /api/v1/daily-logs failed', error)
+    return fail(500, 'INTERNAL_ERROR', 'Unable to delete daily log')
   }
 }

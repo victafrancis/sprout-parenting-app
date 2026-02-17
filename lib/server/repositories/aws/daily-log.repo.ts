@@ -1,4 +1,4 @@
-import { PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamoDocClient } from '@/lib/server/aws/clients'
 import { serverConfig } from '@/lib/server/config'
 import type { DailyLogRepository } from '@/lib/server/repositories/types'
@@ -30,6 +30,7 @@ export class AwsDailyLogRepository implements DailyLogRepository {
       timeLabel: String(item.timeLabel ?? item.SK ?? ''),
       entry: String(item.raw_text ?? item.entry ?? ''),
       createdAt: item.createdAt ? String(item.createdAt) : undefined,
+      storageKey: item.SK ? String(item.SK) : undefined,
     }))
 
     const nextCursor = result.LastEvaluatedKey
@@ -77,6 +78,19 @@ export class AwsDailyLogRepository implements DailyLogRepository {
       timeLabel: 'Just now',
       entry: input.rawText,
       createdAt: iso,
+      storageKey: item.SK,
     }
+  }
+
+  async deleteDailyLog(input: { childId: string; storageKey: string }): Promise<void> {
+    await dynamoDocClient.send(
+      new DeleteCommand({
+        TableName: serverConfig.dynamoTable,
+        Key: {
+          PK: `LOG#${input.childId}`,
+          SK: input.storageKey,
+        },
+      }),
+    )
   }
 }

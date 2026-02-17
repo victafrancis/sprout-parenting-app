@@ -315,3 +315,82 @@ This restores the intended demo workflow: create daily logs in demo mode, call O
 ### Validation
 - Ran `npx tsc --noEmit`.
 - Terminal output in this environment remains noisy, but no explicit TypeScript errors were surfaced.
+
+## Latest Session Update (Profile Edit Mode + Deletion Flows)
+- Implemented explicit edit/delete management for profile values and daily logs, including backend API support, repository support (AWS + mock), and UI controls.
+
+### Domain and contract updates
+- Updated domain types:
+  - file: `lib/types/domain.ts`
+  - `DailyLogEntry` now includes optional `storageKey`
+  - added `RemovableProfileField`
+  - added `RemoveProfileValueInput`
+- Updated repository interfaces:
+  - file: `lib/server/repositories/types.ts`
+  - `ProfileRepository.removeProfileValue(...)`
+  - `DailyLogRepository.deleteDailyLog(...)`
+
+### Service updates
+- Updated profile service:
+  - file: `lib/server/services/profile.service.ts`
+  - added `removeProfileValueService(...)`
+- Updated daily-log service:
+  - file: `lib/server/services/daily-log.service.ts`
+  - added `deleteDailyLogService(...)`
+
+### Repository updates
+- AWS profile repository:
+  - file: `lib/server/repositories/aws/profile.repo.ts`
+  - added `removeProfileValue(...)`
+  - removal is case-insensitive and persists full arrays back to DynamoDB
+- Mock profile repository:
+  - file: `lib/server/repositories/mock/profile.repo.ts`
+  - added in-memory `removeProfileValue(...)`
+- AWS daily-log repository:
+  - file: `lib/server/repositories/aws/daily-log.repo.ts`
+  - list now returns `storageKey` from `SK`
+  - create now returns `storageKey`
+  - added `deleteDailyLog(...)` via DynamoDB `DeleteCommand`
+- Mock daily-log repository:
+  - file: `lib/server/repositories/mock/daily-log.repo.ts`
+  - create now includes `storageKey`
+  - added in-memory `deleteDailyLog(...)`
+- Updated mock seed logs:
+  - file: `lib/data/daily-log.ts`
+  - added deterministic `storageKey` values
+
+### API route updates
+- Profile API:
+  - file: `app/api/v1/profile/route.ts`
+  - added `DELETE /api/v1/profile` with body validation:
+    - `childId`
+    - `field` (`milestones | activeSchemas | interests`)
+    - `value`
+- Daily logs API:
+  - file: `app/api/v1/daily-logs/route.ts`
+  - added `DELETE /api/v1/daily-logs` with body validation:
+    - `childId`
+    - `storageKey`
+
+### Client API updates
+- file: `lib/api/client.ts`
+- added `removeProfileValue(...)`
+- added `deleteDailyLog(...)`
+
+### UI updates
+- Profile UI:
+  - file: `components/Profile.tsx`
+  - added `Edit Profile` button
+  - default view keeps badges clean (no trash icons)
+  - in edit mode, each badge shows trash affordance
+  - added confirmation dialog before removal
+  - profile state updates immediately after successful delete
+- Daily Log UI:
+  - file: `components/DailyLog.tsx`
+  - added per-log delete button in recent activity cards
+  - added confirmation dialog before deletion
+  - list updates immediately after successful delete
+
+### Validation notes
+- Attempted TypeScript validation with `npx tsc --noEmit`, but command output remained unreliable/noisy in this environment.
+- No explicit compile errors were surfaced in tool output after final edits.

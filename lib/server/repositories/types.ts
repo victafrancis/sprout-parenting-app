@@ -2,6 +2,7 @@ import type {
   ChildProfile,
   CreateDailyLogInput,
   DailyLogEntry,
+  RemoveProfileValueInput,
   UpdateProfileCandidatesInput,
   WeeklyPlanMarkdownPayload,
 } from '@/lib/types/domain'
@@ -9,6 +10,7 @@ import type {
 export interface ProfileRepository {
   getProfile(childId: string): Promise<ChildProfile | null>
   updateProfileWithCandidates(input: UpdateProfileCandidatesInput): Promise<ChildProfile>
+  removeProfileValue(input: RemoveProfileValueInput): Promise<ChildProfile>
 }
 
 export interface DailyLogRepository {
@@ -18,6 +20,7 @@ export interface DailyLogRepository {
     cursor?: string
   }): Promise<{ items: DailyLogEntry[]; nextCursor?: string | null }>
   createDailyLog(input: CreateDailyLogInput): Promise<DailyLogEntry>
+  deleteDailyLog(input: { childId: string; storageKey: string }): Promise<void>
 }
 
 export interface WeeklyPlanRepository {

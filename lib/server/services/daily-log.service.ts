@@ -28,3 +28,15 @@ export async function createDailyLogService(input: {
     extractionResult: input.extractionResult,
   })
 }
+
+export async function deleteDailyLogService(input: {
+  childId: string
+  storageKey: string
+  useDemoMode?: boolean
+}) {
+  const repository = getDailyLogRepository(Boolean(input.useDemoMode))
+  return repository.deleteDailyLog({
+    childId: input.childId,
+    storageKey: input.storageKey,
+  })
+}

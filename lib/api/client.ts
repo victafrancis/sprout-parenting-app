@@ -6,6 +6,7 @@ import type {
   CreateDailyLogInput,
   DailyLogEntry,
   ProfileUpdateCandidates,
+  RemovableProfileField,
   WeeklyPlanMarkdownPayload,
 } from '@/lib/types/domain'
 
@@ -112,6 +113,36 @@ export async function updateProfileWithCandidates(input: {
   })
 
   return payload.data
+}
+
+export async function removeProfileValue(input: {
+  childId: string
+  field: RemovableProfileField
+  value: string
+}) {
+  const payload = await fetchJson<ChildProfile>('/api/v1/profile', {
+    method: 'DELETE',
+    body: JSON.stringify({
+      childId: input.childId,
+      field: input.field,
+      value: input.value,
+    }),
+  })
+
+  return payload.data
+}
+
+export async function deleteDailyLog(input: {
+  childId: string
+  storageKey: string
+}) {
+  await fetchJson<{ success: boolean }>('/api/v1/daily-logs', {
+    method: 'DELETE',
+    body: JSON.stringify({
+      childId: input.childId,
+      storageKey: input.storageKey,
+    }),
+  })
 }
 
 export async function getWeeklyPlan(params?: { childId?: string; objectKey?: string }) {

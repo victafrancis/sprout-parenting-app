@@ -36,6 +36,7 @@ export type DailyLogEntry = {
   timeLabel: string
   entry: string
   createdAt?: string
+  storageKey?: string
 }
 
 export type CreateDailyLogInput = {
@@ -55,6 +56,17 @@ export type UpdateProfileCandidatesInput = {
   milestones: string[]
   activeSchemas: string[]
   interests: string[]
+}
+
+export type RemovableProfileField =
+  | 'milestones'
+  | 'activeSchemas'
+  | 'interests'
+
+export type RemoveProfileValueInput = {
+  childId: string
+  field: RemovableProfileField
+  value: string
 }
 
 export type WeeklyPlanMarkdownPayload = {

@@ -36,6 +36,22 @@ function mergeUniqueTextValues(existingValues: string[], incomingValues: string[
   return Array.from(normalizedExistingValues.values())
 }
 
+function normalizeTextValue(value: string) {
+  return value.trim().toLowerCase()
+}
+
+function removeTextValue(existingValues: string[], valueToRemove: string) {
+  const normalizedValueToRemove = normalizeTextValue(valueToRemove)
+
+  if (!normalizedValueToRemove) {
+    return existingValues
+  }
+
+  return existingValues.filter(
+    (existingValue) => normalizeTextValue(existingValue) !== normalizedValueToRemove,
+  )
+}
+
 export class AwsProfileRepository implements ProfileRepository {
   async getProfile(childId: string): Promise<ChildProfile | null> {
     const result = await dynamoDocClient.send(
@@ -133,6 +149,85 @@ export class AwsProfileRepository implements ProfileRepository {
       milestones: mergedMilestones,
       activeSchemas: mergedActiveSchemas,
       interests: mergedInterests,
+    }
+  }
+
+  async removeProfileValue(input: {
+    childId: string
+    field: 'milestones' | 'activeSchemas' | 'interests'
+    value: string
+  }): Promise<ChildProfile> {
+    const currentProfile = await this.getProfile(input.childId)
+
+    if (!currentProfile) {
+      return {
+        name: input.childId,
+        birthDate: createApproxBirthDateFromAgeMonths(0),
+        ageMonths: 0,
+        milestones: [],
+        activeSchemas: [],
+        interests: [],
+      }
+    }
+
+    const updatedProfile = {
+      ...currentProfile,
+      milestones: [...currentProfile.milestones],
+      activeSchemas: [...currentProfile.activeSchemas],
+      interests: [...currentProfile.interests],
+    }
+
+    if (input.field === 'milestones') {
+      updatedProfile.milestones = removeTextValue(
+        currentProfile.milestones,
+        input.value,
+      )
+    }
+
+    if (input.field === 'activeSchemas') {
+      updatedProfile.activeSchemas = removeTextValue(
+        currentProfile.activeSchemas,
+        input.value,
+      )
+    }
+
+    if (input.field === 'interests') {
+      updatedProfile.interests = removeTextValue(
+        currentProfile.interests,
+        input.value,
+      )
+    }
+
+    await dynamoDocClient.send(
+      new UpdateCommand({
+        TableName: serverConfig.dynamoTable,
+        Key: {
+          PK: `USER#${input.childId}`,
+          SK: 'PROFILE',
+        },
+        UpdateExpression:
+          'SET #name = if_not_exists(#name, :defaultName), birth_date = if_not_exists(birth_date, :defaultBirthDate), milestones = :milestones, schemas = :schemas, interests = :interests',
+        ExpressionAttributeNames: {
+          '#name': 'name',
+        },
+        ExpressionAttributeValues: {
+          ':defaultName': input.childId,
+          ':defaultBirthDate':
+            currentProfile.birthDate ?? createApproxBirthDateFromAgeMonths(0),
+          ':milestones': updatedProfile.milestones,
+          ':schemas': updatedProfile.activeSchemas,
+          ':interests': updatedProfile.interests,
+        },
+      }),
+    )
+
+    return {
+      name: updatedProfile.name,
+      birthDate: updatedProfile.birthDate,
+      ageMonths: calculateAgeMonthsFromBirthDate(updatedProfile.birthDate),
+      milestones: updatedProfile.milestones,
+      activeSchemas: updatedProfile.activeSchemas,
+      interests: updatedProfile.interests,
     }
   }
 }
