@@ -72,8 +72,9 @@ The frontend acts as the "Control Plane" and relies on AI for frictionless data 
 
 To protect personal data while allowing recruiter access, we use **Next.js Middleware**.
 
-* **The Bouncer (Admin Access):** User enters a passcode matching the `ADMIN_PASSCODE` env var. Middleware grants a secure cookie allowing real DynamoDB read/writes.
-* **The Display Case (Demo Mode):** Public users click "View Demo". Middleware grants a `demo=true` cookie. API routes intercept requests and serve mock JSON data instead of querying AWS. Database writes are blocked.
+* **The Bouncer (Admin Access):** User enters a passcode matching the `ADMIN_PASSCODE` env var through `/api/auth/login`. On success, the server issues a signed `sprout_session` HttpOnly cookie that enables real AWS-backed reads/writes.
+* **The Display Case (Demo Mode):** Default visitors receive a `sprout_demo=true` HttpOnly cookie and stay in demo mode. API routes serve mock-style behavior and block database writes.
+* **Defense in Depth:** Middleware resolves mode at the edge, and each API route re-checks mode before read/write execution (`authenticated`, `demo`, `unauthenticated`).
 
 ---
 
@@ -119,7 +120,7 @@ This is the "Worker" that runs once a week. It is completely isolated from the f
 
 ### Environment Variables
 
-* **Next.js:** `DATA_MODE`, `AWS_REGION`, `DYNAMODB_TABLE`, `S3_WEEKLY_PLAN_BUCKET`, `S3_WEEKLY_PLAN_PREFIX`, `ADMIN_PASSCODE`, `OPENROUTER_API_KEY`.
+* **Next.js:** `DATA_MODE`, `AWS_REGION`, `DYNAMODB_TABLE`, `S3_WEEKLY_PLAN_BUCKET`, `S3_WEEKLY_PLAN_PREFIX`, `ADMIN_PASSCODE`, `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_REMEMBER_TTL_DAYS`, `OPENROUTER_API_KEY`.
 * **Lambda:** `OPENROUTER_API_KEY` (for weekly plan generation), `DYNAMODB_TABLE`, `S3_BUCKET`, `S3_DEVELOPMENT_GUIDES_PREFIX`, `S3_WEEKLY_PLANS_PREFIX`, `EMAIL_SOURCE`.
 
 ---

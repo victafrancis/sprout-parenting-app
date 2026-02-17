@@ -71,6 +71,10 @@ Core env vars used by Next.js server side:
 - `DYNAMODB_TABLE`
 - `S3_WEEKLY_PLAN_BUCKET`
 - `S3_WEEKLY_PLAN_PREFIX`
+- `ADMIN_PASSCODE`
+- `SESSION_SECRET`
+- `SESSION_TTL_HOURS`
+- `SESSION_REMEMBER_TTL_DAYS`
 - `OPENROUTER_API_KEY`
 - `OPENROUTER_MODEL`
 
@@ -94,6 +98,55 @@ When creating a daily log (`POST /api/v1/daily-logs`), the server:
 ### Fallback behavior
 
 If OpenRouter is unavailable (missing key, timeout, invalid response, or request failure), the log is still saved and extraction falls back to empty candidates (`extractionSource="fallback"`).
+
+---
+
+## Authentication, Demo Mode, and Session Cookies
+
+The app supports two runtime experiences:
+
+- **Demo Mode (default):** mock read behavior, writes blocked
+- **Authenticated Mode:** real AWS-backed reads/writes (when `DATA_MODE=aws`)
+
+### User flow
+
+1. App loads and shows **`Demo Mode (click to login)`** in the header.
+2. Clicking opens a simple passcode login dialog.
+3. Successful login sets a signed session cookie and switches to authenticated mode.
+4. Header action becomes **`Log out`**.
+5. Logging out clears the session and returns the app to demo mode.
+
+### Cookies used
+
+- `sprout_session`
+  - Signed token created server-side (`role`, `exp`)
+  - `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` in production
+  - TTL controlled by:
+    - `SESSION_TTL_HOURS` (normal sign-in)
+    - `SESSION_REMEMBER_TTL_DAYS` (remember-me sign-in)
+- `sprout_demo`
+  - Marks demo-mode browsing for public/non-authenticated usage
+  - `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` in production
+
+### Endpoints
+
+- `POST /api/auth/login` → validates passcode and issues signed session cookie
+- `POST /api/auth/logout` → clears session and returns to demo cookie state
+- `POST /api/auth/demo` → explicitly forces demo cookie state
+- `GET /api/auth/status` → returns current resolved mode
+
+### Security notes
+
+- Passcode validation uses timing-safe comparison.
+- Signed session cookie prevents tampering from granting admin access.
+- API routes still enforce mode checks server-side (defense in depth):
+  - demo: reads allowed, writes blocked
+  - authenticated: reads and writes allowed
+  - unauthenticated: blocked
+
+For production on Amplify, store `ADMIN_PASSCODE` and `SESSION_SECRET` in Amplify environment variables.
+
+If `SESSION_SECRET` is missing, the app stays in **demo-only mode** and passcode login is disabled (`AUTH_DISABLED`).
 
 ---
 

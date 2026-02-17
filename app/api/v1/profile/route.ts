@@ -29,6 +29,10 @@ export async function GET(request: Request) {
     }
 
     const mode = await getRequestMode()
+    if (mode.mode === 'unauthenticated') {
+      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
+    }
+
     const profile = await getProfileService({
       childId: parsed.data.childId,
       useDemoMode: mode.isDemo,
@@ -48,6 +52,10 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const mode = await getRequestMode()
+    if (mode.mode === 'unauthenticated') {
+      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
+    }
+
     if (mode.isDemo) {
       return fail(403, 'FORBIDDEN', 'Writes are disabled in demo mode')
     }

@@ -135,3 +135,101 @@ Updated the profile data model to use `birthDate` as the source of truth and der
   - default selection is latest markdown by `LastModified`
   - UI supports dropdown switching and empty-state text
 - No `architecture.md` change made to avoid unnecessary edits.
+
+## Latest Session Update (Auth, Demo, and Session Cookies)
+- Implemented passcode-based authentication with signed session cookies and default demo mode.
+
+### Auth and session primitives
+- Added cookie/constants module:
+  - `lib/server/auth/constants.ts`
+  - `SESSION_COOKIE_NAME` (`sprout_session`), `DEMO_COOKIE_NAME` (`sprout_demo`), time helpers
+- Added signed session token utility:
+  - `lib/server/auth/session.ts`
+  - HMAC-SHA256 token signing/verification with `SESSION_SECRET`
+  - token payload includes role and expiry (`exp`)
+- Expanded server config:
+  - `lib/server/config.ts`
+  - new env support: `ADMIN_PASSCODE`, `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_REMEMBER_TTL_DAYS`
+
+### Request-mode resolution and middleware
+- Updated request auth mode:
+  - `lib/server/auth-mode.ts`
+  - explicit mode output: `authenticated | demo | unauthenticated`
+  - derives mode from signed session cookie + demo cookie
+- Added root middleware:
+  - `middleware.ts`
+  - ensures first-time visitors get demo cookie for default demo experience
+
+### Auth APIs
+- Added `POST /api/auth/login`:
+  - `app/api/auth/login/route.ts`
+  - passcode validation via timing-safe comparison
+  - issues signed `sprout_session` cookie
+  - supports remember-me TTL
+- Added `POST /api/auth/demo`:
+  - `app/api/auth/demo/route.ts`
+  - explicitly sets demo cookie and clears session
+- Added `POST /api/auth/logout`:
+  - `app/api/auth/logout/route.ts`
+  - clears session and restores demo cookie
+- Added `GET /api/auth/status`:
+  - `app/api/auth/status/route.ts`
+  - reports resolved auth mode for UI state
+
+### API enforcement updates
+- Updated `/api/v1/*` routes to use new request mode checks:
+  - `app/api/v1/daily-logs/route.ts`
+  - `app/api/v1/profile/route.ts`
+  - `app/api/v1/weekly-plan/route.ts`
+- behavior:
+  - unauthenticated requests return 401
+  - demo mode allows reads and blocks writes
+  - authenticated mode enables AWS read/write path
+
+### UI updates
+- Updated `app/page.tsx` header/auth UX:
+  - default header state: `Demo Mode (click to login)`
+  - login dialog with passcode + remember me
+  - authenticated header action: `Log out`
+  - auth status bootstrapped from `/api/auth/status`
+- Added client API methods in `lib/api/client.ts`:
+  - `getAuthStatus`, `loginWithPasscode`, `enableDemoMode`, `logout`
+- Added auth domain types in `lib/types/domain.ts`:
+  - `AuthMode`, `AuthStatusResponse`
+
+### Documentation updates
+- Updated `.env.example` with new auth env vars.
+- Updated `README.md` with authentication/session section and endpoint behavior.
+- Updated `architecture.md` security and environment sections to reflect signed cookies + middleware flow.
+
+### Validation
+- Ran TypeScript validation:
+  - `npx tsc --noEmit`
+  - completed successfully after resolving mode typing guard path.
+
+## Latest Session Update (Hardening + Navigation Order)
+- Applied optional auth hardening by requiring `SESSION_SECRET` at startup:
+  - file: `lib/server/config.ts`
+  - removed insecure fallback secret
+  - app now throws a clear configuration error when `SESSION_SECRET` is missing
+- Updated bottom navigation order and default entry tab:
+  - file: `app/page.tsx`
+  - order is now: `Weekly Plan` (left), `Daily Log` (middle), `Profile` (right)
+  - default active tab is now `weekly-plan`
+- Updated docs:
+  - file: `README.md`
+  - clarified that `SESSION_SECRET` is mandatory and fail-fast enforced
+
+## Next Goal
+- Primary next milestone: deploy the app to AWS Amplify with production env vars and IAM role validation.
+
+## Latest Session Update (Auth Policy Adjustment)
+- Adjusted authentication hardening policy to match product intent:
+  - missing `SESSION_SECRET` no longer crashes app startup
+  - app now remains usable in demo-only mode when secret is missing
+  - passcode login explicitly returns `AUTH_DISABLED` when auth secret is unavailable
+- Files updated:
+  - `lib/server/config.ts` (`sessionSecret` optional + `isAuthEnabled` flag)
+  - `lib/server/auth/session.ts` (safe null-return behavior when secret is absent)
+  - `app/api/auth/login/route.ts` (clear `AUTH_DISABLED` response)
+  - `README.md` (documented demo-only fallback behavior)

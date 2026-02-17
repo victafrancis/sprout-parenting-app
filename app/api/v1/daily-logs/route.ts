@@ -33,6 +33,10 @@ export async function GET(request: Request) {
     }
 
     const mode = await getRequestMode()
+    if (mode.mode === 'unauthenticated') {
+      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
+    }
+
     const result = await listDailyLogsService({
       childId: parsed.data.childId,
       limit: parsed.data.limit,
@@ -50,6 +54,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const mode = await getRequestMode()
+    if (mode.mode === 'unauthenticated') {
+      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
+    }
+
     if (mode.isDemo) {
       return fail(403, 'FORBIDDEN', 'Writes are disabled in demo mode')
     }

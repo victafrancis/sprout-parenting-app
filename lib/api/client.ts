@@ -1,5 +1,6 @@
 import type { ApiResponse } from '@/lib/types/api'
 import type {
+  AuthStatusResponse,
   ChildProfile,
   CreateDailyLogResponse,
   CreateDailyLogInput,
@@ -88,6 +89,39 @@ export async function getWeeklyPlan(params?: { childId?: string; objectKey?: str
   const payload = await fetchJson<WeeklyPlanMarkdownPayload>(
     `/api/v1/weekly-plan?${search.toString()}`,
   )
+
+  return payload.data
+}
+
+export async function getAuthStatus() {
+  const payload = await fetchJson<AuthStatusResponse>('/api/auth/status')
+  return payload.data
+}
+
+export async function loginWithPasscode(input: {
+  passcode: string
+  rememberMe: boolean
+}) {
+  const payload = await fetchJson<AuthStatusResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+
+  return payload.data
+}
+
+export async function enableDemoMode() {
+  const payload = await fetchJson<AuthStatusResponse>('/api/auth/demo', {
+    method: 'POST',
+  })
+
+  return payload.data
+}
+
+export async function logout() {
+  const payload = await fetchJson<AuthStatusResponse>('/api/auth/logout', {
+    method: 'POST',
+  })
 
   return payload.data
 }
