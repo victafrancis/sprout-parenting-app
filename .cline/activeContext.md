@@ -394,3 +394,21 @@ This restores the intended demo workflow: create daily logs in demo mode, call O
 ### Validation notes
 - Attempted TypeScript validation with `npx tsc --noEmit`, but command output remained unreliable/noisy in this environment.
 - No explicit compile errors were surfaced in tool output after final edits.
+
+## Latest Session Update (Amplify SSR Env Documentation)
+- Documented the resolved Amplify SSR environment-variable deployment behavior and maintainability options.
+
+### README updates
+- File: `README.md`
+- Added new section: `Amplify SSR Environment Variables`
+  - Amplify Console env vars are treated as build-environment inputs for this deployment flow.
+  - Required runtime handoff for Next SSR is documented: copy allowlisted vars into `.env.production` before `next build`.
+  - Added filename caveat: build spec must be `amplify.yml` (not `amplify.yaml`).
+  - Added scalable pattern note: optional prefix-based strategy (for example `SSR_`) to reduce allowlist maintenance.
+
+### Architecture updates
+- File: `architecture.md`
+- Added one concise infrastructure paragraph under Environment Variables documenting the Amplify SSR handoff pattern (`amplify.yml` -> `.env.production` -> deterministic `process.env` in server runtime).
+
+### Outcome
+- Documentation now preserves the root cause and production-safe deployment pattern that fixed missing `SESSION_SECRET` at runtime in Amplify.

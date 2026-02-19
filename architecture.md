@@ -123,6 +123,8 @@ This is the "Worker" that runs once a week. It is completely isolated from the f
 * **Next.js:** `DATA_MODE`, `REGION`, `DYNAMODB_TABLE`, `S3_WEEKLY_PLAN_BUCKET`, `S3_WEEKLY_PLAN_PREFIX`, `ADMIN_PASSCODE`, `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_REMEMBER_TTL_DAYS`, `OPENROUTER_API_KEY`.
 * **Lambda:** `OPENROUTER_API_KEY` (for weekly plan generation), `DYNAMODB_TABLE`, `S3_BUCKET`, `S3_DEVELOPMENT_GUIDES_PREFIX`, `S3_WEEKLY_PLANS_PREFIX`, `EMAIL_SOURCE`.
 
+For Amplify-hosted Next.js SSR, treat Amplify Console variables as build-environment inputs and explicitly hand off required server runtime values during build (via `amplify.yml`) by writing an allowlisted set into `.env.production` before `next build`. This keeps SSR runtime access deterministic (`process.env` in API routes/server components) while preserving least-privilege control over which variables are exposed.
+
 ---
 
 ## 6. Execution Roadmap (Data First Strategy)

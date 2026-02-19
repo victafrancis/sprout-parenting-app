@@ -235,6 +235,19 @@ Use IAM roles (least privilege) for Amplify/Lambda runtime identities instead of
 
 ---
 
+## Amplify SSR Environment Variables
+
+For this Next.js SSR deployment on Amplify, environment variables set in the Amplify Console are treated as build-environment inputs. To make selected values available to server-side runtime code (`process.env` in API routes/server components), the build pipeline copies an allowlist of keys into `.env.production` before `next build`.
+
+- Build spec file must be named `amplify.yml` (not `amplify.yaml`).
+- `.env.production` is generated in CI and should not contain committed secrets.
+
+### Scalable pattern (optional)
+
+If you want to reduce `amplify.yml` maintenance when adding new SSR vars, use a prefix convention (for example `SSR_`) and copy by prefix instead of adding each key one-by-one. This keeps scope intentional while avoiding frequent allowlist edits.
+
+---
+
 ## Troubleshooting
 
 ### Launcher says mock even though `.env.local` has `DATA_MODE=aws`
