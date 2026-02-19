@@ -1,0 +1,22 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - rm -f .env.production
+        - touch .env.production
+        - env | grep -E '^(SESSION_SECRET|ADMIN_PASSCODE|DATA_MODE|REGION|DYNAMODB_TABLE|S3_WEEKLY_PLAN_BUCKET|S3_WEEKLY_PLAN_PREFIX|SESSION_TTL_HOURS|SESSION_REMEMBER_TTL_DAYS|OPENROUTER_API_KEY|OPENROUTER_MODEL)=' >> .env.production
+        - echo "Injected env keys:"
+        - grep -E '^(SESSION_SECRET|ADMIN_PASSCODE|DATA_MODE|REGION|DYNAMODB_TABLE|S3_WEEKLY_PLAN_BUCKET|S3_WEEKLY_PLAN_PREFIX|SESSION_TTL_HOURS|SESSION_REMEMBER_TTL_DAYS|OPENROUTER_API_KEY|OPENROUTER_MODEL)=' .env.production | cut -d= -f1
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
