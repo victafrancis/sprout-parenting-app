@@ -67,7 +67,7 @@ This allows realistic AI parsing tests locally without writing to AWS.
 Core env vars used by Next.js server side:
 
 - `DATA_MODE`
-- `AWS_REGION`
+- `REGION`
 - `DYNAMODB_TABLE`
 - `S3_WEEKLY_PLAN_BUCKET`
 - `S3_WEEKLY_PLAN_PREFIX`

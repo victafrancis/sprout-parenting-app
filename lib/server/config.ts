@@ -31,7 +31,7 @@ function parsePositiveNumber(value: string | undefined, fallback: number) {
 
 export const serverConfig = {
   dataMode: mode as DataMode,
-  awsRegion: process.env.AWS_REGION || 'us-east-1',
+  awsRegion: process.env.REGION || 'us-east-1',
   dynamoTable: process.env.DYNAMODB_TABLE || 'Sprout_Data',
   s3WeeklyPlanBucket: process.env.S3_WEEKLY_PLAN_BUCKET || '',
   s3WeeklyPlanPrefix: process.env.S3_WEEKLY_PLAN_PREFIX || 'plans',
