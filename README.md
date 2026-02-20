@@ -2,6 +2,8 @@
 
 Sprout is a Next.js app for capturing daily parenting logs, maintaining a child profile, and preparing data for personalized weekly development plans.
 
+View demo here: https://main.d4h79py8dy0s1.amplifyapp.com/
+
 This project follows a **Split-Brain architecture**:
 - **Control Plane (Next.js app):** parent-facing UI and APIs for daily logs/profile updates
 - **Worker Plane (Lambda, planned):** scheduled weekly synthesis using DynamoDB + S3 knowledge base + OpenRouter
