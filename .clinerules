@@ -6,14 +6,21 @@
     * **What:** The "Now". Tracks current task, recent changes, and immediate next steps.
     * **Action:** Read this first. **Update this at the end of every session.**
 
-2.  **`architecture.md`** (Location: Root directory)
+2.  **`contextArchive.md`** (Location: `.cline/contextArchive.md`)
+    * **What:** Historical session log and completed task context.
+    * **Action:** Append or migrate older, completed context here when `activeContext.md` grows or a task is fully complete.
+
+3.  **`architecture.md`** (Location: Root directory)
     * **What:** The "Constitution". Contains the Split-Brain architecture, DynamoDB schema, and "Sprout" logic.
     * **Action:** Read-Only. Refer to this for strict constraints. Do not modify unless we are fundamentally changing the architecture.
 
 ### Your Workflow:
 1.  **Start:** Read `activeContext.md` to see where we left off.
 2.  **Consult:** Read `architecture.md` to ensure you aren't breaking the Single Table Design or Split-Brain rules.
-3.  **End:** Update `activeContext.md` with a summary of what you built.
+3.  **End:** Update memory files with hygiene rules:
+    * If work is still active, keep `activeContext.md` focused on the current objective, current status, blockers, and immediate next steps.
+    * If work is completed, move detailed session history into `contextArchive.md` and reset `activeContext.md` to concise current state.
+    * Keep `activeContext.md` short and fast to scan (target roughly one screen, not a long running log).
 
 
 ### Next.js & Clean Code Principles
