@@ -412,3 +412,24 @@ This restores the intended demo workflow: create daily logs in demo mode, call O
 
 ### Outcome
 - Documentation now preserves the root cause and production-safe deployment pattern that fixed missing `SESSION_SECRET` at runtime in Amplify.
+
+## Latest Session Update (Daily Log Pagination: 5 at a time)
+- Implemented cursor-based pagination in `components/DailyLog.tsx` for Recent Activity to reduce fetch size and improve initial load responsiveness.
+
+### UI/behavior changes
+- Added `DAILY_LOG_PAGE_SIZE = 5` and switched initial recent-activity fetch from 20 to 5.
+- Added pagination state:
+  - `nextCursor`
+  - `isLoadingMore`
+- Refactored loading flow for clarity:
+  - `loadInitialData()` loads profile + first page of logs.
+  - `loadRecentActivityFirstPage()` refreshes recent activity after save.
+  - `handleLoadMoreLogs()` fetches next page using cursor and appends entries.
+- Added a `Load more` button under Recent Activity when a `nextCursor` exists.
+- Added inline spinner state for load-more (`Loading more...`) while preserving existing first-load spinner.
+
+### Data/API compatibility
+- No backend/API contract changes were required because cursor pagination (`limit`, `cursor`, `nextCursor`) was already implemented end-to-end.
+
+### Validation
+- Ran `npx tsc --noEmit`; terminal output remained noisy/unreliable in this environment, with no explicit TypeScript errors surfaced.

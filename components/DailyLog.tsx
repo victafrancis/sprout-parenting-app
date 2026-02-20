@@ -34,6 +34,7 @@ import {
 import type { DailyLogEntry, ProfileUpdateCandidates } from '@/lib/types/domain'
 
 type CandidateGroupKey = keyof ProfileUpdateCandidates
+const DAILY_LOG_PAGE_SIZE = 5
 
 export function DailyLog() {
   const [isSaving, setIsSaving] = useState(false)
@@ -42,6 +43,8 @@ export function DailyLog() {
   const [error, setError] = useState<string | null>(null)
   const [childName, setChildName] = useState('your child')
   const [entries, setEntries] = useState<DailyLogEntry[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [logEntry, setLogEntry] = useState('')
   const [candidateReviewOpen, setCandidateReviewOpen] = useState(false)
   const [isDeletingLog, setIsDeletingLog] = useState(false)
@@ -82,16 +85,28 @@ export function DailyLog() {
     return false
   }
 
-  async function loadData() {
+  async function loadRecentActivityFirstPage() {
+    const recentLogs = await getDailyLogs({
+      childId: 'Yumi',
+      limit: DAILY_LOG_PAGE_SIZE,
+    })
+
+    setEntries(recentLogs.items)
+    setNextCursor(recentLogs.nextCursor)
+  }
+
+  async function loadInitialData() {
     try {
       setIsLoading(true)
       setError(null)
-      const [profile, logs] = await Promise.all([
+      const [profile, recentLogs] = await Promise.all([
         getProfile('Yumi'),
-        getDailyLogs({ childId: 'Yumi', limit: 20 }),
+        getDailyLogs({ childId: 'Yumi', limit: DAILY_LOG_PAGE_SIZE }),
       ])
+
       setChildName(profile.name)
-      setEntries(logs.items)
+      setEntries(recentLogs.items)
+      setNextCursor(recentLogs.nextCursor)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load daily log data')
     } finally {
@@ -99,8 +114,34 @@ export function DailyLog() {
     }
   }
 
+  async function handleLoadMoreLogs() {
+    if (!nextCursor || isLoadingMore) {
+      return
+    }
+
+    try {
+      setIsLoadingMore(true)
+      setError(null)
+
+      const nextPage = await getDailyLogs({
+        childId: 'Yumi',
+        limit: DAILY_LOG_PAGE_SIZE,
+        cursor: nextCursor,
+      })
+
+      setEntries((previousEntries) => {
+        return [...previousEntries, ...nextPage.items]
+      })
+      setNextCursor(nextPage.nextCursor)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load more recent activity')
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
+
   useEffect(() => {
-    void loadData()
+    void loadInitialData()
   }, [])
 
   const handleSaveLog = async () => {
@@ -118,7 +159,7 @@ export function DailyLog() {
       }
 
       setLogEntry('')
-      await loadData()
+      await loadRecentActivityFirstPage()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save log entry')
     } finally {
@@ -259,6 +300,27 @@ export function DailyLog() {
               </CardHeader>
             </Card>
           ))}
+
+          {!isLoading && entries.length > 0 && nextCursor ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                void handleLoadMoreLogs()
+              }}
+              disabled={isLoadingMore}
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading more...
+                </>
+              ) : (
+                'Load more'
+              )}
+            </Button>
+          ) : null}
         </div>
       </div>
 
