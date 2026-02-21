@@ -1,18 +1,24 @@
 # Active Context
 
 ## Current Task
-No active implementation task in progress.
+Set up phase-1 PWA install metadata and icon wiring using generated favicon assets.
 
 ## Current Status
-- Last completed work: Daily Log recent activity pagination (5 logs per fetch) in `components/DailyLog.tsx`.
-- Historical context has been archived to `.cline/contextArchive.md`.
+- Moved generated favicon bundle into static serving path: `public/favicon/`.
+- Updated `app/layout.tsx` metadata for PWA-related head tags:
+  - `manifest: '/manifest.webmanifest'`
+  - favicon + SVG + Apple touch icon references
+  - `appleWebApp` metadata and `themeColor` viewport setting
+- Added Next App Router manifest route: `app/manifest.ts`.
+- Removed obsolete generated manifest file: `app/favicon/site.webmanifest`.
 
 ## Open Decisions / Blockers
-- None.
+- Service worker/offline caching is not yet added (optional phase-2 for full PWA behavior).
 
 ## Immediate Next Steps
-1. Wait for the next requested task.
-2. If a new task starts, replace this file with that task's current objective, in-progress status, blockers, and next steps.
+1. Run the app and verify `/manifest.webmanifest` loads and includes the expected icons.
+2. In Chrome DevTools → Application, verify Manifest icons and installability.
+3. Optional: add service worker (`next-pwa`) for offline caching and stronger PWA behavior.
 
 ## Last Updated
-2026-02-20
+2026-02-21
