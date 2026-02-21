@@ -5,6 +5,7 @@ import { BookOpen, User, Calendar } from 'lucide-react'
 import { DailyLog } from '@/components/DailyLog'
 import { Profile } from '@/components/Profile'
 import { WeeklyPlan } from '@/components/WeeklyPlan'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -104,30 +105,34 @@ export default function Page() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-foreground">Sprout</h1>
-        {isAuthenticated ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void handleLogout()
-            }}
-          >
-            Log out
-          </Button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setLoginError(null)
-              setLoginDialogOpen(true)
-            }}
-          >
-            <Badge variant="secondary" className="text-xs font-medium">
-              Demo Mode (click to login)
-            </Badge>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+
+          {isAuthenticated ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void handleLogout()
+              }}
+            >
+              Log out
+            </Button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setLoginError(null)
+                setLoginDialogOpen(true)
+              }}
+            >
+              <Badge variant="secondary" className="text-xs font-medium">
+                Demo Mode (click to login)
+              </Badge>
+            </button>
+          )}
+        </div>
       </header>
 
       {globalAuthError ? (

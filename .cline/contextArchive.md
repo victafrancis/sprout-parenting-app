@@ -457,3 +457,44 @@ This restores the intended demo workflow: create daily logs in demo mode, call O
     - `/manifest.webmanifest` route
 - TypeScript manifest fix:
   - changed icon `purpose` in `app/manifest.ts` from `'any maskable'` to `'maskable'` to satisfy `MetadataRoute.Manifest` typing.
+
+## Latest Session Update (Dark mode toggle + persisted theme)
+- Implemented app-level dark mode with explicit light default and local persistence.
+
+### Theme infrastructure
+- Updated root layout:
+  - file: `app/layout.tsx`
+  - wrapped app with `ThemeProvider` from `next-themes`
+  - config:
+    - `attribute="class"`
+    - `defaultTheme="light"`
+    - `enableSystem={false}`
+    - `storageKey="sprout-theme"`
+  - added `suppressHydrationWarning` on `<html>` to avoid theme hydration mismatch warnings.
+
+### Header toggle UI
+- Added reusable theme toggle component:
+  - file: `components/ThemeToggle.tsx`
+  - uses `useTheme` to switch between `light` and `dark`
+  - includes mount guard to avoid SSR/client mismatch flicker
+  - uses existing design system `Button` and `lucide-react` icons (`Sun`, `Moon`)
+- Updated top bar placement:
+  - file: `app/page.tsx`
+  - inserted `ThemeToggle` immediately before existing login/logout control
+  - preserved current auth flow and button behavior.
+
+### Validation
+- Attempted TypeScript validation via CLI (`tsc --noEmit`), but this environment returned non-informative spinner/empty output.
+
+## Latest Session Update (Dark palette softened)
+- Updated dark theme colors in `app/globals.css` to a softer gray-dark palette so screens are less harsh than near-black.
+- Adjusted `.dark` variables:
+  - `--background`, `--card`, `--popover`, `--secondary`, `--muted`, `--accent`, `--border`, `--input`
+- Theme toggle and persistence behavior remain unchanged (`sprout-theme` local storage key).
+
+## Archive Migration Note (2026-02-21)
+- Confirmed dark mode workstream is complete:
+  - top-bar theme toggle added before auth controls
+  - theme persistence enabled with local storage (`sprout-theme`)
+  - dark palette softened to gray-dark tones in `app/globals.css`
+- Active context has been reset to idle/waiting state.
