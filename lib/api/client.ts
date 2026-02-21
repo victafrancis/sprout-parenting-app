@@ -1,5 +1,6 @@
 import type { ApiResponse } from '@/lib/types/api'
 import type {
+  AcceptDailyLogCandidatesResponse,
   AuthStatusResponse,
   ChildProfile,
   CreateDailyLogResponse,
@@ -106,6 +107,25 @@ export async function updateProfileWithCandidates(input: {
     method: 'PATCH',
     body: JSON.stringify({
       childId: input.childId,
+      milestones: input.selectedCandidates.milestones.map((candidate) => candidate.value),
+      activeSchemas: input.selectedCandidates.activeSchemas.map((candidate) => candidate.value),
+      interests: input.selectedCandidates.interests.map((candidate) => candidate.value),
+    }),
+  })
+
+  return payload.data
+}
+
+export async function acceptDailyLogCandidates(input: {
+  childId: string
+  storageKey: string
+  selectedCandidates: ProfileUpdateCandidates
+}) {
+  const payload = await fetchJson<AcceptDailyLogCandidatesResponse>('/api/v1/daily-logs', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      childId: input.childId,
+      storageKey: input.storageKey,
       milestones: input.selectedCandidates.milestones.map((candidate) => candidate.value),
       activeSchemas: input.selectedCandidates.activeSchemas.map((candidate) => candidate.value),
       interests: input.selectedCandidates.interests.map((candidate) => candidate.value),

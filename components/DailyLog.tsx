@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
+  acceptDailyLogCandidates,
   createDailyLog,
   deleteDailyLog,
   getDailyLogs,
   getProfile,
-  updateProfileWithCandidates,
 } from '@/lib/api/client'
 import {
   AlertDialog,
@@ -53,6 +53,8 @@ export function DailyLog() {
   const [pendingCandidates, setPendingCandidates] = useState<ProfileUpdateCandidates | null>(
     null,
   )
+  const [pendingCandidateLogStorageKey, setPendingCandidateLogStorageKey] =
+    useState<string | null>(null)
 
   function removeCandidate(groupKey: CandidateGroupKey, value: string) {
     if (!pendingCandidates) {
@@ -79,6 +81,26 @@ export function DailyLog() {
     }
 
     if (candidates.interests.length > 0) {
+      return true
+    }
+
+    return false
+  }
+
+  function hasAnyAppliedProfileUpdates(entry: DailyLogEntry) {
+    if (!entry.appliedProfileUpdates) {
+      return false
+    }
+
+    if (entry.appliedProfileUpdates.milestones.length > 0) {
+      return true
+    }
+
+    if (entry.appliedProfileUpdates.activeSchemas.length > 0) {
+      return true
+    }
+
+    if (entry.appliedProfileUpdates.interests.length > 0) {
       return true
     }
 
@@ -155,6 +177,7 @@ export function DailyLog() {
 
       if (hasAnyCandidates(createdLogResponse.profileCandidates)) {
         setPendingCandidates(createdLogResponse.profileCandidates)
+        setPendingCandidateLogStorageKey(createdLogResponse.log.storageKey ?? null)
         setCandidateReviewOpen(true)
       }
 
@@ -177,13 +200,21 @@ export function DailyLog() {
       setIsApplyingProfileUpdates(true)
       setError(null)
 
-      await updateProfileWithCandidates({
+      if (!pendingCandidateLogStorageKey) {
+        setError('Unable to apply profile updates because the log key is missing.')
+        return
+      }
+
+      await acceptDailyLogCandidates({
         childId: 'Yumi',
+        storageKey: pendingCandidateLogStorageKey,
         selectedCandidates: pendingCandidates,
       })
 
       setCandidateReviewOpen(false)
       setPendingCandidates(null)
+      setPendingCandidateLogStorageKey(null)
+      await loadRecentActivityFirstPage()
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to apply profile updates',
@@ -196,6 +227,7 @@ export function DailyLog() {
   const handleSkipCandidates = () => {
     setCandidateReviewOpen(false)
     setPendingCandidates(null)
+    setPendingCandidateLogStorageKey(null)
   }
 
   async function handleConfirmDeleteLog() {
@@ -297,6 +329,40 @@ export function DailyLog() {
                 <CardTitle className="text-sm font-medium leading-relaxed">
                   {entry.entry}
                 </CardTitle>
+
+                {hasAnyAppliedProfileUpdates(entry) ? (
+                  <div className="space-y-2 pt-2">
+                    {entry.appliedProfileUpdates?.milestones.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {entry.appliedProfileUpdates.milestones.map((milestone) => (
+                          <Badge key={`${entry.id}-milestone-${milestone}`} variant="secondary">
+                            Milestone: {milestone}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {entry.appliedProfileUpdates?.activeSchemas.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {entry.appliedProfileUpdates.activeSchemas.map((schema) => (
+                          <Badge key={`${entry.id}-schema-${schema}`} variant="outline">
+                            Schema: {schema}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {entry.appliedProfileUpdates?.interests.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {entry.appliedProfileUpdates.interests.map((interest) => (
+                          <Badge key={`${entry.id}-interest-${interest}`} variant="outline">
+                            Interest: {interest}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </CardHeader>
             </Card>
           ))}

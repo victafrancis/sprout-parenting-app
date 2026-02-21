@@ -37,6 +37,13 @@ export type DailyLogEntry = {
   entry: string
   createdAt?: string
   storageKey?: string
+  appliedProfileUpdates?: AppliedProfileUpdates
+}
+
+export type AppliedProfileUpdates = {
+  milestones: string[]
+  activeSchemas: string[]
+  interests: string[]
 }
 
 export type CreateDailyLogInput = {
@@ -56,6 +63,19 @@ export type UpdateProfileCandidatesInput = {
   milestones: string[]
   activeSchemas: string[]
   interests: string[]
+}
+
+export type AcceptDailyLogCandidatesInput = {
+  childId: string
+  storageKey: string
+  milestones: string[]
+  activeSchemas: string[]
+  interests: string[]
+}
+
+export type AcceptDailyLogCandidatesResponse = {
+  updatedProfile: ChildProfile
+  appliedProfileUpdates: AppliedProfileUpdates
 }
 
 export type RemovableProfileField =

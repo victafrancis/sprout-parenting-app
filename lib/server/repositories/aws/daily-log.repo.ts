@@ -1,8 +1,38 @@
-import { DeleteCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamoDocClient } from '@/lib/server/aws/clients'
 import { serverConfig } from '@/lib/server/config'
 import type { DailyLogRepository } from '@/lib/server/repositories/types'
-import type { CreateDailyLogInput, DailyLogEntry } from '@/lib/types/domain'
+import type {
+  AppliedProfileUpdates,
+  CreateDailyLogInput,
+  DailyLogEntry,
+} from '@/lib/types/domain'
+
+function parseAppliedProfileUpdates(value: unknown): AppliedProfileUpdates | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined
+  }
+
+  const updates = value as Record<string, unknown>
+
+  const milestones = Array.isArray(updates.milestones)
+    ? updates.milestones.filter((item): item is string => typeof item === 'string')
+    : []
+
+  const activeSchemas = Array.isArray(updates.activeSchemas)
+    ? updates.activeSchemas.filter((item): item is string => typeof item === 'string')
+    : []
+
+  const interests = Array.isArray(updates.interests)
+    ? updates.interests.filter((item): item is string => typeof item === 'string')
+    : []
+
+  return {
+    milestones,
+    activeSchemas,
+    interests,
+  }
+}
 
 export class AwsDailyLogRepository implements DailyLogRepository {
   async listDailyLogs(input: {
@@ -31,6 +61,9 @@ export class AwsDailyLogRepository implements DailyLogRepository {
       entry: String(item.raw_text ?? item.entry ?? ''),
       createdAt: item.createdAt ? String(item.createdAt) : undefined,
       storageKey: item.SK ? String(item.SK) : undefined,
+      appliedProfileUpdates: parseAppliedProfileUpdates(
+        item.applied_profile_updates ?? item.appliedProfileUpdates,
+      ),
     }))
 
     const nextCursor = result.LastEvaluatedKey
@@ -80,6 +113,28 @@ export class AwsDailyLogRepository implements DailyLogRepository {
       createdAt: iso,
       storageKey: item.SK,
     }
+  }
+
+  async saveAppliedProfileUpdates(input: {
+    childId: string
+    storageKey: string
+    appliedProfileUpdates: AppliedProfileUpdates
+  }): Promise<void> {
+    await dynamoDocClient.send(
+      new UpdateCommand({
+        TableName: serverConfig.dynamoTable,
+        Key: {
+          PK: `LOG#${input.childId}`,
+          SK: input.storageKey,
+        },
+        UpdateExpression:
+          'SET applied_profile_updates = :appliedProfileUpdates, applied_profile_updates_at = :appliedAt',
+        ExpressionAttributeValues: {
+          ':appliedProfileUpdates': input.appliedProfileUpdates,
+          ':appliedAt': new Date().toISOString(),
+        },
+      }),
+    )
   }
 
   async deleteDailyLog(input: { childId: string; storageKey: string }): Promise<void> {

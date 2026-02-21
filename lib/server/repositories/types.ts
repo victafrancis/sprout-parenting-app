@@ -1,4 +1,5 @@
 import type {
+  AppliedProfileUpdates,
   ChildProfile,
   CreateDailyLogInput,
   DailyLogEntry,
@@ -20,6 +21,11 @@ export interface DailyLogRepository {
     cursor?: string
   }): Promise<{ items: DailyLogEntry[]; nextCursor?: string | null }>
   createDailyLog(input: CreateDailyLogInput): Promise<DailyLogEntry>
+  saveAppliedProfileUpdates(input: {
+    childId: string
+    storageKey: string
+    appliedProfileUpdates: AppliedProfileUpdates
+  }): Promise<void>
   deleteDailyLog(input: { childId: string; storageKey: string }): Promise<void>
 }
 

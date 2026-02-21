@@ -1,6 +1,10 @@
 import { mockLogEntries } from '@/lib/data/daily-log'
 import type { DailyLogRepository } from '@/lib/server/repositories/types'
-import type { CreateDailyLogInput, DailyLogEntry } from '@/lib/types/domain'
+import type {
+  AppliedProfileUpdates,
+  CreateDailyLogInput,
+  DailyLogEntry,
+} from '@/lib/types/domain'
 
 const inMemoryLogs: DailyLogEntry[] = [...mockLogEntries]
 
@@ -34,6 +38,24 @@ export class MockDailyLogRepository implements DailyLogRepository {
 
     inMemoryLogs.unshift(newLog)
     return newLog
+  }
+
+  async saveAppliedProfileUpdates(input: {
+    childId: string
+    storageKey: string
+    appliedProfileUpdates: AppliedProfileUpdates
+  }) {
+    void input.childId
+
+    const logEntry = inMemoryLogs.find((existingLogEntry) => {
+      return existingLogEntry.storageKey === input.storageKey
+    })
+
+    if (!logEntry) {
+      return
+    }
+
+    logEntry.appliedProfileUpdates = input.appliedProfileUpdates
   }
 
   async deleteDailyLog(input: { childId: string; storageKey: string }) {

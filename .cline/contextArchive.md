@@ -2,6 +2,54 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Daily Log Attribution for Accepted Profile Additions)
+- Implemented end-to-end support for tracking exactly which accepted suggestions were truly new additions to profile and attributing them to the originating daily log.
+
+### Domain and contract updates
+- Updated `lib/types/domain.ts`:
+  - added `AppliedProfileUpdates`
+  - extended `DailyLogEntry` with optional `appliedProfileUpdates`
+  - added `AcceptDailyLogCandidatesInput` and `AcceptDailyLogCandidatesResponse`
+- Updated `lib/server/repositories/types.ts`:
+  - added `DailyLogRepository.saveAppliedProfileUpdates(...)`
+
+### Repository updates
+- AWS daily-log repository (`lib/server/repositories/aws/daily-log.repo.ts`):
+  - list mapping now reads optional `applied_profile_updates`
+  - added `saveAppliedProfileUpdates(...)` using DynamoDB `UpdateCommand`
+  - persists `applied_profile_updates` and `applied_profile_updates_at`
+- Mock daily-log repository (`lib/server/repositories/mock/daily-log.repo.ts`):
+  - added in-memory `saveAppliedProfileUpdates(...)`
+
+### Service and API updates
+- Daily-log service (`lib/server/services/daily-log.service.ts`):
+  - added `acceptDailyLogCandidatesService(...)`
+  - compares selected values against current profile (case-insensitive)
+  - computes only truly new additions per group
+  - updates profile via repository and stores computed additions on the target log
+- Daily-log API route (`app/api/v1/daily-logs/route.ts`):
+  - added `PATCH /api/v1/daily-logs`
+  - validates `childId`, `storageKey`, and selected values
+  - executes accept flow and returns attribution payload
+
+### Client and UI updates
+- API client (`lib/api/client.ts`):
+  - added `acceptDailyLogCandidates(...)` for `PATCH /api/v1/daily-logs`
+- Daily Log UI (`components/DailyLog.tsx`):
+  - stores `storageKey` of the newly created log while candidate modal is open
+  - accept action now calls log-centric endpoint with `storageKey`
+  - recent activity refreshes after accept
+  - log cards render pills for attributed additions:
+    - `Milestone: ...`
+    - `Schema: ...`
+    - `Interest: ...`
+
+### Validation
+- Ran `npx tsc --noEmit` and confirmed successful exit (`TS_EXIT_CODE:0`).
+
+### Behavior result
+- Accepted suggestions now record **only values that were actually newly added** at accept time (duplicates already in profile are excluded), and those additions are visible on the corresponding daily log card.
+
 ## Current Task
 Updated the profile data model to use `birthDate` as the source of truth and derive `ageMonths` dynamically, while also aligning architecture docs with the finalized S3 prefix structure.
 

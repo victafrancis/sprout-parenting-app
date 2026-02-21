@@ -4,6 +4,7 @@ import { created, fail, ok } from '@/lib/server/http'
 import { getProfileService } from '@/lib/server/services/profile.service'
 import { extractDailyLogInsights } from '@/lib/server/services/daily-log-extraction.service'
 import {
+  acceptDailyLogCandidatesService,
   createDailyLogService,
   deleteDailyLogService,
   listDailyLogsService,
@@ -23,6 +24,14 @@ const postSchema = z.object({
 const deleteSchema = z.object({
   childId: z.string().min(1).default('Yumi'),
   storageKey: z.string().min(1),
+})
+
+const patchSchema = z.object({
+  childId: z.string().min(1).default('Yumi'),
+  storageKey: z.string().min(1),
+  milestones: z.array(z.string()).default([]),
+  activeSchemas: z.array(z.string()).default([]),
+  interests: z.array(z.string()).default([]),
 })
 
 export async function GET(request: Request) {
@@ -128,5 +137,37 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error('DELETE /api/v1/daily-logs failed', error)
     return fail(500, 'INTERNAL_ERROR', 'Unable to delete daily log')
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const mode = await getRequestMode()
+    if (mode.mode === 'unauthenticated') {
+      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
+    }
+
+    const useDemoModeForWrite = !mode.isAuthenticated
+
+    const body = await request.json()
+    const parsed = patchSchema.safeParse(body)
+
+    if (!parsed.success) {
+      return fail(400, 'VALIDATION_ERROR', 'Invalid request body')
+    }
+
+    const result = await acceptDailyLogCandidatesService({
+      childId: parsed.data.childId,
+      storageKey: parsed.data.storageKey,
+      milestones: parsed.data.milestones,
+      activeSchemas: parsed.data.activeSchemas,
+      interests: parsed.data.interests,
+      useDemoMode: useDemoModeForWrite,
+    })
+
+    return ok(result)
+  } catch (error) {
+    console.error('PATCH /api/v1/daily-logs failed', error)
+    return fail(500, 'INTERNAL_ERROR', 'Unable to apply profile updates for daily log')
   }
 }
