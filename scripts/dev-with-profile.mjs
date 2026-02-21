@@ -80,7 +80,7 @@ if (isDryRun) {
   process.exit(0)
 }
 
-const nextProcess = spawn('npx', ['next', 'dev'], {
+const nextProcess = spawn('npx', ['next', 'dev', '--webpack'], {
   stdio: 'inherit',
   shell: true,
   env: runtimeEnvironment,

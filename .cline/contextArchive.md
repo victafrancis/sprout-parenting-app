@@ -435,3 +435,25 @@ This restores the intended demo workflow: create daily logs in demo mode, call O
 
 ### Validation
 - Ran `npx tsc --noEmit`; terminal output remained noisy/unreliable in this environment, with no explicit TypeScript errors surfaced.
+
+## Latest Session Update (PWA install polish + service worker)
+- Implemented phase-1 PWA install metadata and icon wiring:
+  - moved generated favicon assets to `public/favicon/`
+  - updated `app/layout.tsx` metadata with:
+    - `manifest: '/manifest.webmanifest'`
+    - favicon + SVG + Apple touch icon references
+    - `appleWebApp` config and `themeColor`
+  - added `app/manifest.ts` as App Router manifest route
+  - removed obsolete `app/favicon/site.webmanifest`
+- Implemented phase-2 service worker setup:
+  - installed `@ducanh2912/next-pwa`
+  - updated `next.config.mjs` with PWA wrapper (`dest: 'public'`, disabled in development)
+  - resolved Next 16 Turbopack/webpack conflict for plugin compatibility:
+    - `package.json` build script now runs `next build --webpack`
+    - `scripts/dev-with-profile.mjs` now runs `next dev --webpack`
+  - verified production output includes:
+    - `public/sw.js`
+    - `public/workbox-*.js`
+    - `/manifest.webmanifest` route
+- TypeScript manifest fix:
+  - changed icon `purpose` in `app/manifest.ts` from `'any maskable'` to `'maskable'` to satisfy `MetadataRoute.Manifest` typing.
