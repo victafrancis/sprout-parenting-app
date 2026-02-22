@@ -2,6 +2,31 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Daily Log Date Labels Fixed)
+- Fixed bug where Daily Log "Recent Activity" entries always displayed `Just now`.
+
+### Root cause
+- `components/DailyLog.tsx` correctly rendered `entry.timeLabel`, but repository read paths returned stale stored labels.
+- New logs were persisted with `timeLabel: 'Just now'`, and AWS list mapping preferred that field indefinitely.
+
+### Implementation
+- Added shared utility:
+  - `lib/server/utils/time-label.ts`
+  - `buildDailyLogTimeLabel({ createdAt, storageKey, fallbackLabel })`
+  - derives label from `createdAt`, falls back to parsing ISO from `SK` (`DATE#...`), then fallback label.
+  - relative outputs for recent entries and date output for older entries.
+- Updated AWS daily-log repository:
+  - `lib/server/repositories/aws/daily-log.repo.ts`
+  - `listDailyLogs` now computes `timeLabel` via `buildDailyLogTimeLabel(...)`.
+- Updated mock daily-log repository:
+  - `lib/server/repositories/mock/daily-log.repo.ts`
+  - `listDailyLogs` now computes `timeLabel` via `buildDailyLogTimeLabel(...)` with fallback for seeded labels.
+
+### Validation
+- Ran TypeScript check with explicit exit capture:
+  - `npx tsc --noEmit >/tmp/sprout-tsc.log 2>&1; echo TS_EXIT_CODE:$?; tail -n 20 /tmp/sprout-tsc.log`
+  - Result: `TS_EXIT_CODE:0`
+
 ## Latest Session Update (Daily Log Attribution for Accepted Profile Additions)
 - Implemented end-to-end support for tracking exactly which accepted suggestions were truly new additions to profile and attributing them to the originating daily log.
 

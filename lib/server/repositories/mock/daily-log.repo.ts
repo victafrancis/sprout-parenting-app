@@ -1,5 +1,6 @@
 import { mockLogEntries } from '@/lib/data/daily-log'
 import type { DailyLogRepository } from '@/lib/server/repositories/types'
+import { buildDailyLogTimeLabel } from '@/lib/server/utils/time-label'
 import type {
   AppliedProfileUpdates,
   CreateDailyLogInput,
@@ -16,7 +17,16 @@ export class MockDailyLogRepository implements DailyLogRepository {
   }) {
     void input.childId
     const offset = Number.parseInt(input.cursor || '0', 10) || 0
-    const items = inMemoryLogs.slice(offset, offset + input.limit)
+    const items = inMemoryLogs.slice(offset, offset + input.limit).map((logEntry) => {
+      return {
+        ...logEntry,
+        timeLabel: buildDailyLogTimeLabel({
+          createdAt: logEntry.createdAt,
+          storageKey: logEntry.storageKey,
+          fallbackLabel: logEntry.timeLabel,
+        }),
+      }
+    })
     const nextOffset = offset + input.limit
 
     return {

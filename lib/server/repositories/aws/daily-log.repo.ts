@@ -2,6 +2,7 @@ import { DeleteCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk
 import { dynamoDocClient } from '@/lib/server/aws/clients'
 import { serverConfig } from '@/lib/server/config'
 import type { DailyLogRepository } from '@/lib/server/repositories/types'
+import { buildDailyLogTimeLabel } from '@/lib/server/utils/time-label'
 import type {
   AppliedProfileUpdates,
   CreateDailyLogInput,
@@ -57,7 +58,11 @@ export class AwsDailyLogRepository implements DailyLogRepository {
 
     const items = (result.Items ?? []).map((item: Record<string, unknown>) => ({
       id: String(item.id ?? item.SK ?? Date.now()),
-      timeLabel: String(item.timeLabel ?? item.SK ?? ''),
+      timeLabel: buildDailyLogTimeLabel({
+        createdAt: item.createdAt ? String(item.createdAt) : undefined,
+        storageKey: item.SK ? String(item.SK) : undefined,
+        fallbackLabel: item.timeLabel ? String(item.timeLabel) : '',
+      }),
       entry: String(item.raw_text ?? item.entry ?? ''),
       createdAt: item.createdAt ? String(item.createdAt) : undefined,
       storageKey: item.SK ? String(item.SK) : undefined,
