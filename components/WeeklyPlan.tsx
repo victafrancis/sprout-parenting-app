@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { getWeeklyPlan } from '@/lib/api/client'
 import ReactMarkdown from 'react-markdown'
@@ -12,15 +12,228 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+
+type WeeklyPlanViewMode = 'document' | 'cards'
+
+type WeeklyPlanSection = {
+  id: string
+  title: string
+  bodyMarkdown: string
+  subsections: WeeklyPlanSubsection[]
+}
+
+type WeeklyPlanSubsection = {
+  id: string
+  title: string
+  bodyMarkdown: string
+}
+
+type ParsedWeeklyPlan = {
+  title: string
+  introMarkdown: string
+  sections: WeeklyPlanSection[]
+}
+
+function normalizeMarkdownFromLines(lines: string[]) {
+  const cleanedLines = [...lines]
+
+  while (cleanedLines.length > 0 && cleanedLines[0].trim() === '') {
+    cleanedLines.shift()
+  }
+
+  while (
+    cleanedLines.length > 0 &&
+    cleanedLines[cleanedLines.length - 1].trim() === ''
+  ) {
+    cleanedLines.pop()
+  }
+
+  return cleanedLines.join('\n').trim()
+}
+
+function createIdFromTitle(title: string, fallback: string) {
+  const normalizedTitle = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+
+  if (normalizedTitle.length === 0) {
+    return fallback
+  }
+
+  return normalizedTitle
+}
+
+function parseWeeklyPlanMarkdown(markdown: string): ParsedWeeklyPlan {
+  const lines = markdown.split('\n')
+
+  let planTitle = 'Weekly Developmental Plan'
+  const introLines: string[] = []
+  const sections: WeeklyPlanSection[] = []
+
+  let currentSection: WeeklyPlanSection | null = null
+  let currentSubsection: WeeklyPlanSubsection | null = null
+  let untitledSectionCount = 0
+
+  function finalizeCurrentSubsection() {
+    if (!currentSection || !currentSubsection) {
+      return
+    }
+
+    const normalizedMarkdown = normalizeMarkdownFromLines(
+      currentSubsection.bodyMarkdown.split('\n'),
+    )
+
+    currentSection.subsections.push({
+      ...currentSubsection,
+      bodyMarkdown: normalizedMarkdown,
+    })
+
+    currentSubsection = null
+  }
+
+  function finalizeCurrentSection() {
+    if (!currentSection) {
+      return
+    }
+
+    finalizeCurrentSubsection()
+
+    const normalizedBodyMarkdown = normalizeMarkdownFromLines(
+      currentSection.bodyMarkdown.split('\n'),
+    )
+
+    sections.push({
+      ...currentSection,
+      bodyMarkdown: normalizedBodyMarkdown,
+    })
+
+    currentSection = null
+  }
+
+  for (const line of lines) {
+    if (line.startsWith('# ')) {
+      planTitle = line.replace('# ', '').trim()
+      continue
+    }
+
+    if (line.startsWith('## ')) {
+      finalizeCurrentSection()
+      const sectionTitle = line.replace('## ', '').trim()
+      currentSection = {
+        id: createIdFromTitle(sectionTitle, `section-${sections.length + 1}`),
+        title: sectionTitle,
+        bodyMarkdown: '',
+        subsections: [],
+      }
+      continue
+    }
+
+    if (line.startsWith('### ')) {
+      if (!currentSection) {
+        untitledSectionCount += 1
+        currentSection = {
+          id: `untitled-section-${untitledSectionCount}`,
+          title: `Section ${untitledSectionCount}`,
+          bodyMarkdown: '',
+          subsections: [],
+        }
+      }
+
+      finalizeCurrentSubsection()
+
+      const subsectionTitle = line.replace('### ', '').trim()
+      currentSubsection = {
+        id: createIdFromTitle(
+          subsectionTitle,
+          `${currentSection.id}-subsection-${currentSection.subsections.length + 1}`,
+        ),
+        title: subsectionTitle,
+        bodyMarkdown: '',
+      }
+      continue
+    }
+
+    if (currentSubsection) {
+      currentSubsection.bodyMarkdown =
+        currentSubsection.bodyMarkdown.length === 0
+          ? line
+          : `${currentSubsection.bodyMarkdown}\n${line}`
+      continue
+    }
+
+    if (currentSection) {
+      currentSection.bodyMarkdown =
+        currentSection.bodyMarkdown.length === 0
+          ? line
+          : `${currentSection.bodyMarkdown}\n${line}`
+      continue
+    }
+
+    introLines.push(line)
+  }
+
+  finalizeCurrentSection()
+
+  return {
+    title: planTitle,
+    introMarkdown: normalizeMarkdownFromLines(introLines),
+    sections,
+  }
+}
+
+function splitMarkdownIntoActivityBlocks(markdown: string) {
+  const lines = markdown.split('\n')
+  const activityHeaderRegex = /^\*\*\d+\.\s.+\*\*\s*$/
+
+  const chunks: string[] = []
+  let currentChunkLines: string[] = []
+
+  for (const line of lines) {
+    if (activityHeaderRegex.test(line)) {
+      const existingChunk = normalizeMarkdownFromLines(currentChunkLines)
+      if (existingChunk.length > 0) {
+        chunks.push(existingChunk)
+      }
+      currentChunkLines = [line]
+      continue
+    }
+
+    if (currentChunkLines.length > 0) {
+      currentChunkLines.push(line)
+    }
+  }
+
+  const finalChunk = normalizeMarkdownFromLines(currentChunkLines)
+  if (finalChunk.length > 0) {
+    chunks.push(finalChunk)
+  }
+
+  if (chunks.length <= 1) {
+    return []
+  }
+
+  return chunks
+}
 
 const markdownComponents = {
-  h1: ({ node, ...props }: any) => <h1 className="text-3xl font-bold mt-8 mb-4" {...props} />,
-  h2: ({ node, ...props }: any) => <h2 className="text-2xl font-bold mt-8 mb-4" {...props} />,
-  h3: ({ node, ...props }: any) => <h3 className="text-xl font-semibold mt-6 mb-3" {...props} />,
-  p: ({ node, ...props }: any) => <p className="text-foreground mb-3 leading-relaxed" {...props} />,
-  ul: ({ node, ...props }: any) => <ul className="list-disc list-inside space-y-2 mb-4 ml-4" {...props} />,
-  ol: ({ node, ...props }: any) => <ol className="list-decimal list-inside space-y-2 mb-4 ml-4" {...props} />,
-  li: ({ node, ...props }: any) => <li className="text-muted-foreground" {...props} />,
+  h1: ({ node, ...props }: any) => <h1 className="text-3xl font-bold mt-6 mb-3" {...props} />,
+  h2: ({ node, ...props }: any) => <h2 className="text-2xl font-bold mt-6 mb-3" {...props} />,
+  h3: ({ node, ...props }: any) => <h3 className="text-xl font-semibold mt-4 mb-2" {...props} />,
+  p: ({ node, ...props }: any) => <p className="text-base text-foreground mb-3 leading-relaxed" {...props} />,
+  ul: ({ node, ...props }: any) => <ul className="text-base list-disc list-inside space-y-2 mb-4 ml-4" {...props} />,
+  ol: ({ node, ...props }: any) => <ol className="text-base list-decimal list-inside space-y-2 mb-4 ml-4" {...props} />,
+  li: ({ node, ...props }: any) => <li className="text-muted-foreground text-base" {...props} />,
   strong: ({ node, ...props }: any) => <strong className="font-semibold text-foreground" {...props} />,
   blockquote: ({ node, ...props }: any) => (
     <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground my-4" {...props} />
@@ -31,8 +244,11 @@ export function WeeklyPlan() {
   const [content, setContent] = useState('')
   const [availablePlans, setAvailablePlans] = useState<WeeklyPlanListItem[]>([])
   const [selectedObjectKey, setSelectedObjectKey] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<WeeklyPlanViewMode>('cards')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const parsedPlan = useMemo(() => parseWeeklyPlanMarkdown(content), [content])
 
   useEffect(() => {
     let isMounted = true
@@ -127,11 +343,112 @@ export function WeeklyPlan() {
         <p className="text-sm text-muted-foreground">No weekly plans generated yet.</p>
       ) : null}
 
-      <div className="prose prose-sm prose-stone dark:prose-invert max-w-none mt-4">
-        <ReactMarkdown components={markdownComponents}>
-          {content}
-        </ReactMarkdown>
-      </div>
+      {!isLoading && !error && content.trim().length > 0 ? (
+        <div className="mt-4 space-y-4">
+          <Tabs
+            value={viewMode}
+            onValueChange={(value) => {
+              setViewMode(value as WeeklyPlanViewMode)
+            }}
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="cards">Cards</TabsTrigger>
+              <TabsTrigger value="document">Document</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {viewMode === 'cards' ? (
+            <div className="space-y-4">
+              <Card className="border-primary/40 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <CardDescription>Weekly plan overview</CardDescription>
+                  <CardTitle className="text-2xl">{parsedPlan.title}</CardTitle>
+                </CardHeader>
+                {parsedPlan.introMarkdown.length > 0 ? (
+                  <CardContent>
+                    <ReactMarkdown components={markdownComponents}>
+                      {parsedPlan.introMarkdown}
+                    </ReactMarkdown>
+                  </CardContent>
+                ) : null}
+              </Card>
+
+              {parsedPlan.sections.map((section) => (
+                <Card key={section.id}>
+                  <CardHeader>
+                    <CardTitle className="text-xl">{section.title}</CardTitle>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    {section.bodyMarkdown.length > 0 ? (
+                      <ReactMarkdown components={markdownComponents}>
+                        {section.bodyMarkdown}
+                      </ReactMarkdown>
+                    ) : null}
+
+                    {section.subsections.map((subsection) => {
+                      const activityBlocks = splitMarkdownIntoActivityBlocks(
+                        subsection.bodyMarkdown,
+                      )
+
+                      if (activityBlocks.length > 0) {
+                        return (
+                          <div
+                            key={subsection.id}
+                            className="space-y-3 rounded-md border border-border bg-muted/30 p-3"
+                          >
+                            <h3 className="text-lg font-semibold text-foreground">
+                              {subsection.title}
+                            </h3>
+
+                            <div className="space-y-2">
+                              {activityBlocks.map((activityMarkdown, index) => (
+                                <Card key={`${subsection.id}-activity-${index + 1}`}>
+                                  <CardHeader className="pb-2">
+                                    <Badge variant="secondary" className="w-fit">
+                                      Activity {index + 1}
+                                    </Badge>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <ReactMarkdown components={markdownComponents}>
+                                      {activityMarkdown}
+                                    </ReactMarkdown>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <Card key={subsection.id} className="bg-muted/20">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">{subsection.title}</CardTitle>
+                          </CardHeader>
+                          {subsection.bodyMarkdown.length > 0 ? (
+                            <CardContent>
+                              <ReactMarkdown components={markdownComponents}>
+                                {subsection.bodyMarkdown}
+                              </ReactMarkdown>
+                            </CardContent>
+                          ) : null}
+                        </Card>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : null}
+
+          {viewMode === 'document' ? (
+            <div className="prose prose-sm prose-stone dark:prose-invert max-w-none mt-1">
+              <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
