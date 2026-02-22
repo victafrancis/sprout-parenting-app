@@ -155,10 +155,10 @@ export default function Page() {
         <div className="flex items-center justify-around h-16 max-w-2xl mx-auto px-4">
           <button
             onClick={() => setActiveTab('weekly-plan')}
-            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
+            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full border-t-4 transition-all ${
               activeTab === 'weekly-plan' 
-                ? 'text-primary' 
-                : 'text-muted-foreground'
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground'
             }`}
           >
             <Calendar className="h-5 w-5" />
@@ -167,10 +167,10 @@ export default function Page() {
 
           <button
             onClick={() => setActiveTab('daily-log')}
-            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
+            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full border-t-4 transition-all ${
               activeTab === 'daily-log' 
-                ? 'text-primary' 
-                : 'text-muted-foreground'
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground'
             }`}
           >
             <BookOpen className="h-5 w-5" />
@@ -179,10 +179,10 @@ export default function Page() {
 
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
+            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full border-t-4 transition-all ${
               activeTab === 'profile' 
-                ? 'text-primary' 
-                : 'text-muted-foreground'
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground'
             }`}
           >
             <User className="h-5 w-5" />
