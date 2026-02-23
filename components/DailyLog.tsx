@@ -1,11 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Trash2 } from 'lucide-react'
-import { Textarea } from '@/components/ui/textarea'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   acceptDailyLogCandidates,
   createDailyLog,
@@ -13,27 +10,16 @@ import {
   getDailyLogs,
   getProfile,
 } from '@/lib/api/client'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import type { DailyLogEntry, ProfileUpdateCandidates } from '@/lib/types/domain'
+import { DailyLogComposer } from '@/components/daily-log/DailyLogComposer'
+import { DailyLogEntryCard } from '@/components/daily-log/DailyLogEntryCard'
+import { ProfileCandidateReviewDialog } from '@/components/daily-log/ProfileCandidateReviewDialog'
+import { DeleteDailyLogDialog } from '@/components/daily-log/DeleteDailyLogDialog'
+import {
+  hasAnyCandidates,
+  type CandidateGroupKey,
+} from '@/components/daily-log/daily-log-utils'
 
-type CandidateGroupKey = keyof ProfileUpdateCandidates
 const DAILY_LOG_PAGE_SIZE = 5
 const DAILY_LOG_DRAFT_STORAGE_KEY = 'sprout-daily-log-draft:Yumi'
 
@@ -105,60 +91,6 @@ export function DailyLog() {
     }
 
     setPendingCandidates(updatedCandidates)
-  }
-
-  function hasAnyCandidates(candidates: ProfileUpdateCandidates) {
-    if (candidates.milestones.length > 0) {
-      return true
-    }
-
-    if (candidates.activeSchemas.length > 0) {
-      return true
-    }
-
-    if (candidates.interests.length > 0) {
-      return true
-    }
-
-    return false
-  }
-
-  function hasAnyAppliedProfileUpdates(entry: DailyLogEntry) {
-    if (!entry.appliedProfileUpdates) {
-      return false
-    }
-
-    if (entry.appliedProfileUpdates.milestones.length > 0) {
-      return true
-    }
-
-    if (entry.appliedProfileUpdates.activeSchemas.length > 0) {
-      return true
-    }
-
-    if (entry.appliedProfileUpdates.interests.length > 0) {
-      return true
-    }
-
-    return false
-  }
-
-  function getPlanReferenceSummary(entry: DailyLogEntry) {
-    if (!entry.planReference) {
-      return null
-    }
-
-    const reference = entry.planReference
-
-    if (reference.referenceLabel.trim().length > 0) {
-      return reference.referenceLabel
-    }
-
-    if (reference.subsectionTitle) {
-      return `${reference.sectionTitle} > ${reference.subsectionTitle}`
-    }
-
-    return reference.sectionTitle
   }
 
   async function loadRecentActivityFirstPage() {
@@ -343,29 +275,14 @@ export function DailyLog() {
         </p>
       ) : null}
       
-      <div className="space-y-4">
-        <Textarea
-          placeholder="Brain-dump today's events, milestones, or struggles..."
-          className="min-h-[240px] text-base resize-none"
-          value={logEntry}
-          onChange={(e) => setLogEntry(e.target.value)}
-        />
-        
-        <Button 
-          onClick={handleSaveLog}
-          disabled={isSaving || !logEntry.trim()}
-          className="w-full h-12 text-base font-medium"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Extracting insights...
-            </>
-          ) : (
-            'Save Log'
-          )}
-        </Button>
-      </div>
+      <DailyLogComposer
+        logEntryText={logEntry}
+        isSaving={isSaving}
+        onLogEntryTextChange={setLogEntry}
+        onSaveLog={() => {
+          void handleSaveLog()
+        }}
+      />
 
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground">Recent Activity</h3>
@@ -377,69 +294,11 @@ export function DailyLog() {
           ) : entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">No recent activity yet.</p>
           ) : entries.map((entry) => (
-            <Card key={entry.id} className="border-border">
-              <CardHeader className="p-4 pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <CardDescription className="text-xs">{entry.timeLabel}</CardDescription>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => {
-                      setPendingLogDeletion(entry)
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <CardTitle className="text-sm font-medium leading-relaxed">
-                  {entry.entry}
-                </CardTitle>
-
-                {entry.planReference ? (
-                  <div className="pt-2">
-                    <Badge variant="outline" className="text-xs">
-                      Plan reference: {getPlanReferenceSummary(entry)}
-                    </Badge>
-                  </div>
-                ) : null}
-
-                {hasAnyAppliedProfileUpdates(entry) ? (
-                  <div className="space-y-2 pt-2">
-                    {entry.appliedProfileUpdates?.milestones.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {entry.appliedProfileUpdates.milestones.map((milestone) => (
-                          <Badge key={`${entry.id}-milestone-${milestone}`} variant="secondary">
-                            Milestone: {milestone}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {entry.appliedProfileUpdates?.activeSchemas.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {entry.appliedProfileUpdates.activeSchemas.map((schema) => (
-                          <Badge key={`${entry.id}-schema-${schema}`} variant="outline">
-                            Schema: {schema}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {entry.appliedProfileUpdates?.interests.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {entry.appliedProfileUpdates.interests.map((interest) => (
-                          <Badge key={`${entry.id}-interest-${interest}`} variant="outline">
-                            Interest: {interest}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </CardHeader>
-            </Card>
+            <DailyLogEntryCard
+              key={entry.id}
+              entry={entry}
+              onRequestDelete={setPendingLogDeletion}
+            />
           ))}
 
           {!isLoading && entries.length > 0 && nextCursor ? (
@@ -465,176 +324,30 @@ export function DailyLog() {
         </div>
       </div>
 
-      <Dialog open={candidateReviewOpen} onOpenChange={setCandidateReviewOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Review profile suggestions</DialogTitle>
-            <DialogDescription>
-              Sprout found potential profile updates from your latest log. Remove
-              anything you do not want before accepting.
-            </DialogDescription>
-          </DialogHeader>
+      <ProfileCandidateReviewDialog
+        isOpen={candidateReviewOpen}
+        pendingCandidates={pendingCandidates}
+        isApplyingProfileUpdates={isApplyingProfileUpdates}
+        onOpenChange={setCandidateReviewOpen}
+        onRemoveCandidate={removeCandidate}
+        onSkipCandidates={handleSkipCandidates}
+        onAcceptCandidates={() => {
+          void handleAcceptCandidates()
+        }}
+      />
 
-          <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Milestones</h4>
-              {pendingCandidates?.milestones.length ? (
-                <div className="space-y-2">
-                  {pendingCandidates.milestones.map((candidate) => (
-                    <div
-                      key={`milestone-${candidate.value}`}
-                      className="border rounded-md p-2 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{candidate.value}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeCandidate('milestones', candidate.value)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{candidate.reason}</p>
-                      <Badge variant="outline" className="text-xs">
-                        Confidence: {Math.round(candidate.confidence * 100)}%
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No milestone suggestions.</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Active Schemas</h4>
-              {pendingCandidates?.activeSchemas.length ? (
-                <div className="space-y-2">
-                  {pendingCandidates.activeSchemas.map((candidate) => (
-                    <div
-                      key={`schema-${candidate.value}`}
-                      className="border rounded-md p-2 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{candidate.value}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            removeCandidate('activeSchemas', candidate.value)
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{candidate.reason}</p>
-                      <Badge variant="outline" className="text-xs">
-                        Confidence: {Math.round(candidate.confidence * 100)}%
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No schema suggestions.</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Interests</h4>
-              {pendingCandidates?.interests.length ? (
-                <div className="space-y-2">
-                  {pendingCandidates.interests.map((candidate) => (
-                    <div
-                      key={`interest-${candidate.value}`}
-                      className="border rounded-md p-2 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{candidate.value}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeCandidate('interests', candidate.value)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{candidate.reason}</p>
-                      <Badge variant="outline" className="text-xs">
-                        Confidence: {Math.round(candidate.confidence * 100)}%
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No interest suggestions.</p>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <div className="grid w-full grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleSkipCandidates}
-                disabled={isApplyingProfileUpdates}
-              >
-                Skip for now
-              </Button>
-              <Button
-                type="button"
-                className="w-full"
-                onClick={handleAcceptCandidates}
-                disabled={isApplyingProfileUpdates}
-              >
-                {isApplyingProfileUpdates ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Applying changes...
-                  </>
-                ) : (
-                  'Accept changes'
-                )}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
-        open={Boolean(pendingLogDeletion)}
+      <DeleteDailyLogDialog
+        isOpen={Boolean(pendingLogDeletion)}
+        isDeletingLog={isDeletingLog}
         onOpenChange={(open) => {
           if (!open) {
             setPendingLogDeletion(null)
           }
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this log entry?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action removes the selected daily log entry.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletingLog}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault()
-                void handleConfirmDeleteLog()
-              }}
-              disabled={isDeletingLog}
-            >
-              {isDeletingLog ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirmDelete={() => {
+          void handleConfirmDeleteLog()
+        }}
+      />
     </div>
   )
 }

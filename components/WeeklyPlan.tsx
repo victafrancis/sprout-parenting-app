@@ -27,15 +27,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
+import { ReferenceLogDialog } from '@/components/weekly-plan/ReferenceLogDialog'
 
 type WeeklyPlanViewMode = 'document' | 'cards'
 
@@ -858,79 +850,21 @@ export function WeeklyPlan() {
         </div>
       ) : null}
 
-      <Dialog
-        open={isReferenceLogDialogOpen}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            closeReferenceLogDialog()
-          }
+      <ReferenceLogDialog
+        isOpen={isReferenceLogDialogOpen}
+        previewTitle={pendingReferenceLogContext?.previewTitle}
+        entryText={referenceLogEntryText}
+        errorMessage={referenceLogError}
+        isSaving={isSavingReferenceLog}
+        onEntryTextChange={(nextText) => {
+          setReferenceLogError(null)
+          setReferenceLogEntryText(nextText)
         }}
-      >
-        <DialogContent
-          onInteractOutside={(event) => {
-            event.preventDefault()
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Log note for this plan item</DialogTitle>
-            <DialogDescription>
-              Save a daily log with a direct reference to the selected plan block.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Referenced plan block
-              </p>
-              <p className="rounded-md border bg-muted/20 p-2 text-sm text-foreground">
-                {pendingReferenceLogContext?.previewTitle || 'No reference selected'}
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Your daily log note
-              </p>
-              <Textarea
-                value={referenceLogEntryText}
-                onChange={(event) => {
-                  setReferenceLogError(null)
-                  setReferenceLogEntryText(event.target.value)
-                }}
-                placeholder="Example: Activity 2 went very well today. She focused for 10 minutes and smiled throughout."
-                className="min-h-[140px]"
-              />
-            </div>
-
-            {referenceLogError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {referenceLogError}
-              </p>
-            ) : null}
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={closeReferenceLogDialog}
-              disabled={isSavingReferenceLog}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                void handleSaveReferencedLog()
-              }}
-              disabled={isSavingReferenceLog || referenceLogEntryText.trim().length === 0}
-            >
-              {isSavingReferenceLog ? 'Saving...' : 'Save referenced log'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onClose={closeReferenceLogDialog}
+        onSave={() => {
+          void handleSaveReferencedLog()
+        }}
+      />
     </div>
   )
 }
