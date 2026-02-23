@@ -107,6 +107,24 @@ export function DailyLog() {
     return false
   }
 
+  function getPlanReferenceSummary(entry: DailyLogEntry) {
+    if (!entry.planReference) {
+      return null
+    }
+
+    const reference = entry.planReference
+
+    if (reference.referenceLabel.trim().length > 0) {
+      return reference.referenceLabel
+    }
+
+    if (reference.subsectionTitle) {
+      return `${reference.sectionTitle} > ${reference.subsectionTitle}`
+    }
+
+    return reference.sectionTitle
+  }
+
   async function loadRecentActivityFirstPage() {
     const recentLogs = await getDailyLogs({
       childId: 'Yumi',
@@ -329,6 +347,14 @@ export function DailyLog() {
                 <CardTitle className="text-sm font-medium leading-relaxed">
                   {entry.entry}
                 </CardTitle>
+
+                {entry.planReference ? (
+                  <div className="pt-2">
+                    <Badge variant="outline" className="text-xs">
+                      Plan reference: {getPlanReferenceSummary(entry)}
+                    </Badge>
+                  </div>
+                ) : null}
 
                 {hasAnyAppliedProfileUpdates(entry) ? (
                   <div className="space-y-2 pt-2">

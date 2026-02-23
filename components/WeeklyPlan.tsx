@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
-import { getWeeklyPlan } from '@/lib/api/client'
+import { ChevronDown, ChevronUp, Loader2, MessageSquarePlus } from 'lucide-react'
+import { createDailyLog, getWeeklyPlan } from '@/lib/api/client'
 import ReactMarkdown from 'react-markdown'
-import type { WeeklyPlanListItem } from '@/lib/types/domain'
+import type { PlanReference, WeeklyPlanListItem } from '@/lib/types/domain'
 import {
   Select,
   SelectContent,
@@ -27,6 +27,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 
 type WeeklyPlanViewMode = 'document' | 'cards'
 
@@ -47,6 +56,11 @@ type ParsedWeeklyPlan = {
   title: string
   introMarkdown: string
   sections: WeeklyPlanSection[]
+}
+
+type PendingReferenceLogContext = {
+  previewTitle: string
+  planReference: PlanReference
 }
 
 function normalizeMarkdownFromLines(lines: string[]) {
@@ -269,6 +283,30 @@ function splitMarkdownIntoActivityBlocks(markdown: string) {
   return chunks
 }
 
+function createReferenceSnippet(markdown: string) {
+  const normalizedMarkdown = normalizeMarkdownFromLines(markdown.split('\n'))
+
+  if (normalizedMarkdown.length === 0) {
+    return undefined
+  }
+
+  if (normalizedMarkdown.length <= 180) {
+    return normalizedMarkdown
+  }
+
+  return `${normalizedMarkdown.slice(0, 180)}...`
+}
+
+function getActivityTitleFromMarkdown(activityMarkdown: string) {
+  const activityHeadingMatch = activityMarkdown.match(/\*\*(\d+\.\s.+?)\*\*/)
+
+  if (!activityHeadingMatch) {
+    return undefined
+  }
+
+  return activityHeadingMatch[1]
+}
+
 const markdownComponents = {
   h1: ({ node, ...props }: any) => <h1 className="text-3xl font-bold mt-6 mb-3" {...props} />,
   h2: ({ node, ...props }: any) => <h2 className="text-2xl font-bold mt-6 mb-3" {...props} />,
@@ -293,6 +331,13 @@ export function WeeklyPlan() {
   const [collapsedSectionsById, setCollapsedSectionsById] = useState<
     Record<string, boolean>
   >({})
+  const [isReferenceLogDialogOpen, setIsReferenceLogDialogOpen] = useState(false)
+  const [pendingReferenceLogContext, setPendingReferenceLogContext] =
+    useState<PendingReferenceLogContext | null>(null)
+  const [referenceLogEntryText, setReferenceLogEntryText] = useState('')
+  const [isSavingReferenceLog, setIsSavingReferenceLog] = useState(false)
+  const [referenceLogError, setReferenceLogError] = useState<string | null>(null)
+  const [referenceLogNotice, setReferenceLogNotice] = useState<string | null>(null)
 
   const parsedPlan = useMemo(() => parseWeeklyPlanMarkdown(content), [content])
   const sectionJumpItems = useMemo(() => {
@@ -405,6 +450,52 @@ export function WeeklyPlan() {
     }
   }
 
+  function openReferenceLogDialog(input: PendingReferenceLogContext) {
+    setReferenceLogError(null)
+    setReferenceLogNotice(null)
+    setReferenceLogEntryText('')
+    setPendingReferenceLogContext(input)
+    setIsReferenceLogDialogOpen(true)
+  }
+
+  function closeReferenceLogDialog() {
+    setIsReferenceLogDialogOpen(false)
+    setPendingReferenceLogContext(null)
+    setReferenceLogEntryText('')
+    setReferenceLogError(null)
+  }
+
+  async function handleSaveReferencedLog() {
+    if (!pendingReferenceLogContext) {
+      return
+    }
+
+    const normalizedReferenceLogEntryText = referenceLogEntryText.trim()
+
+    if (!normalizedReferenceLogEntryText) {
+      setReferenceLogError('Please write a quick note before saving.')
+      return
+    }
+
+    try {
+      setIsSavingReferenceLog(true)
+      setReferenceLogError(null)
+
+      await createDailyLog({
+        childId: 'Yumi',
+        rawText: normalizedReferenceLogEntryText,
+        planReference: pendingReferenceLogContext.planReference,
+      })
+
+      setReferenceLogNotice('Log saved with reference context.')
+      closeReferenceLogDialog()
+    } catch (err) {
+      setReferenceLogError(err instanceof Error ? err.message : 'Failed to save referenced log')
+    } finally {
+      setIsSavingReferenceLog(false)
+    }
+  }
+
   return (
     <div className="p-4 max-w-4xl mx-auto pb-20">
       {!error && availablePlans.length > 0 ? (
@@ -439,6 +530,12 @@ export function WeeklyPlan() {
       {!isLoading && error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
+        </p>
+      ) : null}
+
+      {!isLoading && !error && referenceLogNotice ? (
+        <p className="text-sm text-emerald-600" role="status">
+          {referenceLogNotice}
         </p>
       ) : null}
 
@@ -545,31 +642,55 @@ export function WeeklyPlan() {
                     <Card id={section.id}>
                       <CardHeader className="flex flex-row items-center justify-between gap-3">
                         <CardTitle className="text-xl">{section.title}</CardTitle>
-                        <CollapsibleTrigger asChild>
+                        <div className="flex items-center gap-2">
                           <Button
                             type="button"
                             variant="ghost"
-                            size="sm"
-                            aria-expanded={!isSectionCollapsed}
-                            aria-label={
-                              isSectionCollapsed
-                                ? `Expand ${section.title}`
-                                : `Collapse ${section.title}`
-                            }
+                            size="icon"
+                            aria-label={`Log note for ${section.title}`}
+                            onClick={() => {
+                              openReferenceLogDialog({
+                                previewTitle: section.title,
+                                planReference: {
+                                  planObjectKey: selectedObjectKey,
+                                  sectionId: section.id,
+                                  sectionTitle: section.title,
+                                  referenceLabel: section.title,
+                                  referenceContentMarkdown: section.bodyMarkdown,
+                                  referenceSnippet: createReferenceSnippet(section.bodyMarkdown),
+                                },
+                              })
+                            }}
                           >
-                            {isSectionCollapsed ? (
-                              <>
-                                <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                                <span>Expand</span>
-                              </>
-                            ) : (
-                              <>
-                                <ChevronUp className="h-4 w-4" aria-hidden="true" />
-                                <span>Collapse</span>
-                              </>
-                            )}
+                            <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
                           </Button>
-                        </CollapsibleTrigger>
+
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              aria-expanded={!isSectionCollapsed}
+                              aria-label={
+                                isSectionCollapsed
+                                  ? `Expand ${section.title}`
+                                  : `Collapse ${section.title}`
+                              }
+                            >
+                              {isSectionCollapsed ? (
+                                <>
+                                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                                  <span>Expand</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                                  <span>Collapse</span>
+                                </>
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                        </div>
                       </CardHeader>
 
                       <CollapsibleContent>
@@ -591,25 +712,89 @@ export function WeeklyPlan() {
                                   key={subsection.id}
                                   className="space-y-3 rounded-md border border-border bg-muted/30 p-3"
                                 >
-                                  <h3 className="text-lg font-semibold text-foreground">
-                                    {subsection.title}
-                                  </h3>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <h3 className="text-lg font-semibold text-foreground">
+                                      {subsection.title}
+                                    </h3>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label={`Log note for ${subsection.title}`}
+                                      onClick={() => {
+                                        openReferenceLogDialog({
+                                          previewTitle: `${section.title} > ${subsection.title}`,
+                                          planReference: {
+                                            planObjectKey: selectedObjectKey,
+                                            sectionId: section.id,
+                                            sectionTitle: section.title,
+                                            subsectionId: subsection.id,
+                                            subsectionTitle: subsection.title,
+                                            referenceLabel: `${section.title} > ${subsection.title}`,
+                                            referenceContentMarkdown:
+                                              subsection.bodyMarkdown,
+                                            referenceSnippet: createReferenceSnippet(
+                                              subsection.bodyMarkdown,
+                                            ),
+                                          },
+                                        })
+                                      }}
+                                    >
+                                      <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+                                    </Button>
+                                  </div>
 
                                   <div className="space-y-2">
-                                    {activityBlocks.map((activityMarkdown, index) => (
-                                      <Card key={`${subsection.id}-activity-${index + 1}`}>
-                                        <CardHeader className="pb-2">
-                                          <Badge variant="secondary" className="w-fit">
-                                            Activity {index + 1}
-                                          </Badge>
-                                        </CardHeader>
-                                        <CardContent>
-                                          <ReactMarkdown components={markdownComponents}>
-                                            {activityMarkdown}
-                                          </ReactMarkdown>
-                                        </CardContent>
-                                      </Card>
-                                    ))}
+                                    {activityBlocks.map((activityMarkdown, index) => {
+                                      const activityTitle = getActivityTitleFromMarkdown(
+                                        activityMarkdown,
+                                      )
+
+                                      return (
+                                        <Card key={`${subsection.id}-activity-${index + 1}`}>
+                                          <CardHeader className="pb-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <Badge variant="secondary" className="w-fit">
+                                                Activity {index + 1}
+                                              </Badge>
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={`Log note for ${subsection.title} activity ${index + 1}`}
+                                                onClick={() => {
+                                                  openReferenceLogDialog({
+                                                    previewTitle: `${section.title} > ${subsection.title} > Activity ${index + 1}`,
+                                                    planReference: {
+                                                      planObjectKey: selectedObjectKey,
+                                                      sectionId: section.id,
+                                                      sectionTitle: section.title,
+                                                      subsectionId: subsection.id,
+                                                      subsectionTitle: subsection.title,
+                                                      activityIndex: index + 1,
+                                                      activityTitle,
+                                                      referenceLabel: `${section.title} > ${subsection.title} > Activity ${index + 1}`,
+                                                      referenceContentMarkdown:
+                                                        activityMarkdown,
+                                                      referenceSnippet: createReferenceSnippet(
+                                                        activityMarkdown,
+                                                      ),
+                                                    },
+                                                  })
+                                                }}
+                                              >
+                                                <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+                                              </Button>
+                                            </div>
+                                          </CardHeader>
+                                          <CardContent>
+                                            <ReactMarkdown components={markdownComponents}>
+                                              {activityMarkdown}
+                                            </ReactMarkdown>
+                                          </CardContent>
+                                        </Card>
+                                      )
+                                    })}
                                   </div>
                                 </div>
                               )
@@ -617,8 +802,34 @@ export function WeeklyPlan() {
 
                             return (
                               <Card key={subsection.id} className="bg-muted/20">
-                                <CardHeader className="pb-3">
+                                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
                                   <CardTitle className="text-lg">{subsection.title}</CardTitle>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label={`Log note for ${subsection.title}`}
+                                    onClick={() => {
+                                      openReferenceLogDialog({
+                                        previewTitle: `${section.title} > ${subsection.title}`,
+                                        planReference: {
+                                          planObjectKey: selectedObjectKey,
+                                          sectionId: section.id,
+                                          sectionTitle: section.title,
+                                          subsectionId: subsection.id,
+                                          subsectionTitle: subsection.title,
+                                          referenceLabel: `${section.title} > ${subsection.title}`,
+                                          referenceContentMarkdown:
+                                            subsection.bodyMarkdown,
+                                          referenceSnippet: createReferenceSnippet(
+                                            subsection.bodyMarkdown,
+                                          ),
+                                        },
+                                      })
+                                    }}
+                                  >
+                                    <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+                                  </Button>
                                 </CardHeader>
                                 {subsection.bodyMarkdown.length > 0 ? (
                                   <CardContent>
@@ -646,6 +857,80 @@ export function WeeklyPlan() {
           ) : null}
         </div>
       ) : null}
+
+      <Dialog
+        open={isReferenceLogDialogOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            closeReferenceLogDialog()
+          }
+        }}
+      >
+        <DialogContent
+          onInteractOutside={(event) => {
+            event.preventDefault()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Log note for this plan item</DialogTitle>
+            <DialogDescription>
+              Save a daily log with a direct reference to the selected plan block.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Referenced plan block
+              </p>
+              <p className="rounded-md border bg-muted/20 p-2 text-sm text-foreground">
+                {pendingReferenceLogContext?.previewTitle || 'No reference selected'}
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Your daily log note
+              </p>
+              <Textarea
+                value={referenceLogEntryText}
+                onChange={(event) => {
+                  setReferenceLogError(null)
+                  setReferenceLogEntryText(event.target.value)
+                }}
+                placeholder="Example: Activity 2 went very well today. She focused for 10 minutes and smiled throughout."
+                className="min-h-[140px]"
+              />
+            </div>
+
+            {referenceLogError ? (
+              <p className="text-sm text-destructive" role="alert">
+                {referenceLogError}
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeReferenceLogDialog}
+              disabled={isSavingReferenceLog}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleSaveReferencedLog()
+              }}
+              disabled={isSavingReferenceLog || referenceLogEntryText.trim().length === 0}
+            >
+              {isSavingReferenceLog ? 'Saving...' : 'Save referenced log'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

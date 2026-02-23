@@ -19,6 +19,20 @@ const getSchema = z.object({
 const postSchema = z.object({
   childId: z.string().min(1).default('Yumi'),
   rawText: z.string().min(1).max(5000),
+  planReference: z
+    .object({
+      planObjectKey: z.string().nullable().optional(),
+      sectionId: z.string().min(1),
+      sectionTitle: z.string().min(1),
+      subsectionId: z.string().min(1).optional(),
+      subsectionTitle: z.string().min(1).optional(),
+      activityIndex: z.number().int().min(1).optional(),
+      activityTitle: z.string().min(1).optional(),
+      referenceLabel: z.string().min(1),
+      referenceContentMarkdown: z.string().min(1).optional(),
+      referenceSnippet: z.string().min(1).optional(),
+    })
+    .optional(),
 })
 
 const deleteSchema = z.object({
@@ -96,6 +110,7 @@ export async function POST(request: Request) {
     const createdLog = await createDailyLogService({
       childId: parsed.data.childId,
       rawText: parsed.data.rawText,
+      planReference: parsed.data.planReference,
       extractionResult,
       useDemoMode: useDemoModeForWrite,
     })

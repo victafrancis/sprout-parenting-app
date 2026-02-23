@@ -44,6 +44,7 @@ export class MockDailyLogRepository implements DailyLogRepository {
       entry: input.rawText,
       createdAt,
       storageKey: `MOCK#${Date.now()}`,
+      planReference: input.planReference,
     }
 
     inMemoryLogs.unshift(newLog)

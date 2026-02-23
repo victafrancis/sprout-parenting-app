@@ -7,7 +7,60 @@ import type {
   AppliedProfileUpdates,
   CreateDailyLogInput,
   DailyLogEntry,
+  PlanReference,
 } from '@/lib/types/domain'
+
+function parsePlanReference(value: unknown): PlanReference | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined
+  }
+
+  const reference = value as Record<string, unknown>
+
+  if (
+    typeof reference.sectionId !== 'string' ||
+    typeof reference.sectionTitle !== 'string' ||
+    typeof reference.referenceLabel !== 'string'
+  ) {
+    return undefined
+  }
+
+  const parsedPlanReference: PlanReference = {
+    sectionId: reference.sectionId,
+    sectionTitle: reference.sectionTitle,
+    referenceLabel: reference.referenceLabel,
+  }
+
+  if (typeof reference.planObjectKey === 'string' || reference.planObjectKey === null) {
+    parsedPlanReference.planObjectKey = reference.planObjectKey
+  }
+
+  if (typeof reference.subsectionId === 'string') {
+    parsedPlanReference.subsectionId = reference.subsectionId
+  }
+
+  if (typeof reference.subsectionTitle === 'string') {
+    parsedPlanReference.subsectionTitle = reference.subsectionTitle
+  }
+
+  if (typeof reference.activityIndex === 'number') {
+    parsedPlanReference.activityIndex = reference.activityIndex
+  }
+
+  if (typeof reference.activityTitle === 'string') {
+    parsedPlanReference.activityTitle = reference.activityTitle
+  }
+
+  if (typeof reference.referenceSnippet === 'string') {
+    parsedPlanReference.referenceSnippet = reference.referenceSnippet
+  }
+
+  if (typeof reference.referenceContentMarkdown === 'string') {
+    parsedPlanReference.referenceContentMarkdown = reference.referenceContentMarkdown
+  }
+
+  return parsedPlanReference
+}
 
 function parseAppliedProfileUpdates(value: unknown): AppliedProfileUpdates | undefined {
   if (!value || typeof value !== 'object') {
@@ -66,6 +119,7 @@ export class AwsDailyLogRepository implements DailyLogRepository {
       entry: String(item.raw_text ?? item.entry ?? ''),
       createdAt: item.createdAt ? String(item.createdAt) : undefined,
       storageKey: item.SK ? String(item.SK) : undefined,
+      planReference: parsePlanReference(item.plan_reference ?? item.planReference),
       appliedProfileUpdates: parseAppliedProfileUpdates(
         item.applied_profile_updates ?? item.appliedProfileUpdates,
       ),
@@ -100,6 +154,7 @@ export class AwsDailyLogRepository implements DailyLogRepository {
       },
       extraction_source: input.extractionResult?.source ?? 'fallback',
       extraction_model: input.extractionResult?.model ?? null,
+      plan_reference: input.planReference,
       timeLabel: 'Just now',
       createdAt: iso,
     }
@@ -117,6 +172,7 @@ export class AwsDailyLogRepository implements DailyLogRepository {
       entry: input.rawText,
       createdAt: iso,
       storageKey: item.SK,
+      planReference: input.planReference,
     }
   }
 

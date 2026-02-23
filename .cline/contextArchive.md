@@ -2,6 +2,84 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Reference Snapshot Upgrade)
+- Upgraded referenced logging to store full referenced block content snapshots for stronger downstream AI context.
+
+### Follow-up UX safeguard
+- Updated referenced-log modal to prevent dismissal from outside clicks while preserving intentional close paths:
+  - outside click no longer closes modal (`onInteractOutside -> preventDefault`)
+  - Escape key close remains enabled
+  - X/Cancel buttons continue to close intentionally
+  - file: `components/WeeklyPlan.tsx`
+
+### Changes
+- `PlanReference` now includes `referenceContentMarkdown`:
+  - file: `lib/types/domain.ts`
+- Daily log POST API validation accepts snapshot field:
+  - file: `app/api/v1/daily-logs/route.ts`
+- AWS daily-log repository parse logic now maps snapshot field from stored reference object:
+  - file: `lib/server/repositories/aws/daily-log.repo.ts`
+- Weekly Plan log actions now populate full snapshot content by level:
+  - section -> `section.bodyMarkdown`
+  - subsection -> `subsection.bodyMarkdown`
+  - activity -> `activityMarkdown`
+  - file: `components/WeeklyPlan.tsx`
+
+### Why this matters
+- Referenced logs now carry both metadata and full source block content.
+- This removes the need for future AI synthesis to re-open/parse historical weekly plans just to recover context.
+
+### Validation
+- Ran `npx tsc --noEmit` (command completed; environment output remains minimal/noisy but no TypeScript errors surfaced).
+
+### Next integration point
+- Weekly plan generation pipeline should explicitly include `planReference.referenceContentMarkdown` (plus metadata) when assembling AI prompt context.
+
+## Latest Session Update (Weekly Plan Referenced Logging)
+- Implemented end-to-end referenced logging from Weekly Plan cards so any plan block can create a daily log with structured plan context.
+
+### What changed
+- Domain model updates:
+  - file: `lib/types/domain.ts`
+  - added `PlanReference` type
+  - extended `CreateDailyLogInput` with optional `planReference`
+  - extended `DailyLogEntry` with optional `planReference`
+- Daily logs API contract updates:
+  - file: `app/api/v1/daily-logs/route.ts`
+  - `POST` body now accepts optional `planReference` object with required core fields and optional subsection/activity fields
+  - forwards `planReference` into create-log service
+- Service layer update:
+  - file: `lib/server/services/daily-log.service.ts`
+  - `createDailyLogService` now accepts/forwards optional `planReference`
+- Repository persistence updates:
+  - file: `lib/server/repositories/aws/daily-log.repo.ts`
+    - writes `plan_reference` to DynamoDB during create
+    - parses `plan_reference` (or camelCase fallback) into `DailyLogEntry.planReference` on read
+  - file: `lib/server/repositories/mock/daily-log.repo.ts`
+    - stores `planReference` in in-memory logs for demo parity
+- Weekly Plan UI enhancements:
+  - file: `components/WeeklyPlan.tsx`
+  - added `MessageSquarePlus` icon buttons for:
+    - section cards
+    - subsection cards
+    - activity cards
+  - added modal flow to create referenced log in place (Option A):
+    - shows selected block preview
+    - accepts note text
+    - saves via `createDailyLog({ rawText, planReference })`
+  - supports optional hierarchy fields naturally (section-only, section+subsection, section+subsection+activity)
+- Daily Log UI enhancements:
+  - file: `components/DailyLog.tsx`
+  - displays `Plan reference: ...` badge in Recent Activity when entry has `planReference`
+
+### Validation
+- Attempted `npm run lint`, but current environment command invocation produced an invalid directory error from the wrapped CLI.
+- Ran `npx tsc --noEmit` as focused validation; command completed without surfaced TypeScript errors.
+
+### Outcome
+- Parents can now tap a small icon on any Weekly Plan block and log a note with attached structured context.
+- The structured context is persisted and displayed in Daily Log, improving both human traceability and future AI plan-generation signal quality.
+
 ## Latest Session Update (Docs Alignment: Manual Weekly Plan Trigger + Lambda-First Order)
 - Updated architecture and README documentation to align with current and near-term weekly-plan strategy.
 

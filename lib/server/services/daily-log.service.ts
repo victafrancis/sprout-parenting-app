@@ -4,6 +4,7 @@ import type {
   AcceptDailyLogCandidatesResponse,
   AppliedProfileUpdates,
   DailyLogExtractionResult,
+  PlanReference,
 } from '@/lib/types/domain'
 
 function normalizeTextValue(value: string) {
@@ -45,6 +46,7 @@ export async function listDailyLogsService(input: {
 export async function createDailyLogService(input: {
   childId: string
   rawText: string
+  planReference?: PlanReference
   extractionResult?: DailyLogExtractionResult
   useDemoMode?: boolean
 }) {
@@ -52,6 +54,7 @@ export async function createDailyLogService(input: {
   return repository.createDailyLog({
     childId: input.childId,
     rawText: input.rawText,
+    planReference: input.planReference,
     extractionResult: input.extractionResult,
   })
 }

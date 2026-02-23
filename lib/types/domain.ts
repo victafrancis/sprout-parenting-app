@@ -24,6 +24,19 @@ export type DailyLogStructuredInsights = {
   sentiment: string
 }
 
+export type PlanReference = {
+  planObjectKey?: string | null
+  sectionId: string
+  sectionTitle: string
+  subsectionId?: string
+  subsectionTitle?: string
+  activityIndex?: number
+  activityTitle?: string
+  referenceLabel: string
+  referenceContentMarkdown?: string
+  referenceSnippet?: string
+}
+
 export type DailyLogExtractionResult = {
   structuredLog: DailyLogStructuredInsights
   profileCandidates: ProfileUpdateCandidates
@@ -37,6 +50,7 @@ export type DailyLogEntry = {
   entry: string
   createdAt?: string
   storageKey?: string
+  planReference?: PlanReference
   appliedProfileUpdates?: AppliedProfileUpdates
 }
 
@@ -49,6 +63,7 @@ export type AppliedProfileUpdates = {
 export type CreateDailyLogInput = {
   childId: string
   rawText: string
+  planReference?: PlanReference
   extractionResult?: DailyLogExtractionResult
 }
 
