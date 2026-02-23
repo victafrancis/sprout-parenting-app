@@ -2,6 +2,48 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Candidate Review Buttons Safer Layout)
+- Updated the Daily Log candidate review modal actions to reduce accidental skip taps.
+
+### What changed
+- File: `components/DailyLog.tsx`
+- In the `DialogFooter` for “Review profile suggestions”:
+  - replaced stacked/default footer buttons with a two-column grid (`grid-cols-2`)
+  - left button remains `Skip for now` (secondary outline style)
+  - right button remains `Accept changes` (primary style)
+  - both buttons now use full-width layout within their columns (`w-full`)
+- Existing states preserved:
+  - `isApplyingProfileUpdates` disabling behavior remains unchanged
+  - loading spinner/text on `Accept changes` remains unchanged
+
+### Behavior result
+- Skip and Accept actions are now side-by-side and visually separated, lowering the chance of accidentally pressing Skip.
+
+### Validation
+- Ran `npx tsc --noEmit`; environment output remained minimal/noisy with no explicit TypeScript errors surfaced.
+
+## Latest Session Update (Daily Log Draft Persistence)
+- Implemented client-side draft persistence for Daily Log textarea so in-progress text survives tab navigation (for example, Daily Log -> Profile -> back to Daily Log).
+
+### What changed
+- Updated `components/DailyLog.tsx`:
+  - added `DAILY_LOG_DRAFT_STORAGE_KEY` constant (`sprout-daily-log-draft:Yumi`)
+  - added localStorage helpers with safe guards:
+    - `loadDraftFromLocalStorage()`
+    - `saveDraftToLocalStorage(draftText)`
+    - `clearDraftFromLocalStorage()`
+  - added mount effect to restore saved draft into `logEntry`
+  - added `logEntry` effect to auto-persist draft while typing
+  - clears persisted draft after successful save (`handleSaveLog`)
+
+### Behavior result
+- Draft text is now retained when leaving and returning to the Daily Log tab.
+- Empty/whitespace drafts are removed from storage to avoid stale empty state.
+- localStorage failures are safely ignored so logging flow remains functional.
+
+### Validation
+- Ran `npx tsc --noEmit`; environment output was minimal/noisy with no explicit TypeScript errors surfaced.
+
 ## Latest Session Update (Reference Snapshot Upgrade)
 - Upgraded referenced logging to store full referenced block content snapshots for stronger downstream AI context.
 

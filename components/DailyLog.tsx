@@ -35,6 +35,7 @@ import type { DailyLogEntry, ProfileUpdateCandidates } from '@/lib/types/domain'
 
 type CandidateGroupKey = keyof ProfileUpdateCandidates
 const DAILY_LOG_PAGE_SIZE = 5
+const DAILY_LOG_DRAFT_STORAGE_KEY = 'sprout-daily-log-draft:Yumi'
 
 export function DailyLog() {
   const [isSaving, setIsSaving] = useState(false)
@@ -55,6 +56,41 @@ export function DailyLog() {
   )
   const [pendingCandidateLogStorageKey, setPendingCandidateLogStorageKey] =
     useState<string | null>(null)
+
+  function loadDraftFromLocalStorage() {
+    try {
+      const savedDraft = localStorage.getItem(DAILY_LOG_DRAFT_STORAGE_KEY)
+
+      if (savedDraft === null) {
+        return ''
+      }
+
+      return savedDraft
+    } catch {
+      return ''
+    }
+  }
+
+  function saveDraftToLocalStorage(draftText: string) {
+    try {
+      if (draftText.trim().length === 0) {
+        localStorage.removeItem(DAILY_LOG_DRAFT_STORAGE_KEY)
+        return
+      }
+
+      localStorage.setItem(DAILY_LOG_DRAFT_STORAGE_KEY, draftText)
+    } catch {
+      // Ignore localStorage failures so the form still works.
+    }
+  }
+
+  function clearDraftFromLocalStorage() {
+    try {
+      localStorage.removeItem(DAILY_LOG_DRAFT_STORAGE_KEY)
+    } catch {
+      // Ignore localStorage failures so the form still works.
+    }
+  }
 
   function removeCandidate(groupKey: CandidateGroupKey, value: string) {
     if (!pendingCandidates) {
@@ -184,6 +220,18 @@ export function DailyLog() {
     void loadInitialData()
   }, [])
 
+  useEffect(() => {
+    const savedDraft = loadDraftFromLocalStorage()
+
+    if (savedDraft.length > 0) {
+      setLogEntry(savedDraft)
+    }
+  }, [])
+
+  useEffect(() => {
+    saveDraftToLocalStorage(logEntry)
+  }, [logEntry])
+
   const handleSaveLog = async () => {
     try {
       setIsSaving(true)
@@ -200,6 +248,7 @@ export function DailyLog() {
       }
 
       setLogEntry('')
+      clearDraftFromLocalStorage()
       await loadRecentActivityFirstPage()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save log entry')
@@ -527,28 +576,32 @@ export function DailyLog() {
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSkipCandidates}
-              disabled={isApplyingProfileUpdates}
-            >
-              Skip for now
-            </Button>
-            <Button
-              type="button"
-              onClick={handleAcceptCandidates}
-              disabled={isApplyingProfileUpdates}
-            >
-              {isApplyingProfileUpdates ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Applying changes...
-                </>
-              ) : (
-                'Accept changes'
-              )}
-            </Button>
+            <div className="grid w-full grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleSkipCandidates}
+                disabled={isApplyingProfileUpdates}
+              >
+                Skip for now
+              </Button>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={handleAcceptCandidates}
+                disabled={isApplyingProfileUpdates}
+              >
+                {isApplyingProfileUpdates ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Applying changes...
+                  </>
+                ) : (
+                  'Accept changes'
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
