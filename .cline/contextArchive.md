@@ -2,6 +2,26 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Memory Hygiene Cleanup: Active Context Reset)
+- Cleaned `activeContext.md` to keep it focused on **current** work only.
+- Moved stale status framing out of active context and preserved historical notes in archive.
+
+### Archived context notes
+- Weekly Plan UX polish remains completed and archived (no active work pending).
+- Security triage note retained as historical context:
+  - `npm audit` reported `minimatch` advisory (`GHSA-3ppc-4f35-3m26`)
+  - vulnerable path is transitive via `@ducanh2912/next-pwa -> workbox-build -> glob/minimatch`
+  - npm reported **No fix available** at time of triage
+  - recommendation captured: avoid blind `npm audit fix --force`; monitor upstream `next-pwa/workbox` releases
+
+### Active-context policy
+- `activeContext.md` now stays short and scan-friendly:
+  - current task
+  - current status
+  - blockers
+  - immediate next steps
+  - optional short **Watch Items** line for ongoing monitors
+
 ## Latest Session Update (Weekly Plan UX Polish: Quick Jump + Collapsible Cards)
 - Completed optional Weekly Plan Cards-mode polish in `components/WeeklyPlan.tsx`.
 

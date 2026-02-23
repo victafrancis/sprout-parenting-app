@@ -4,13 +4,11 @@
 Idle / waiting for next feature.
 
 ## Current Status
-- Weekly Plan UX polish is complete and archived in `.cline/contextArchive.md`.
-- `components/WeeklyPlan.tsx` now includes:
-  - compact **Jump to section** index in Cards mode for longer plans
-  - collapsible top-level section cards
-  - global **Expand all / Collapse all** controls
-  - duplicate-safe heading ids for stable anchors/collapse state keys
-- Build validation completed successfully via `npm run build`.
+- No active implementation in progress.
+
+## Watch Items
+- Dependency/security monitor: `minimatch` advisory (`GHSA-3ppc-4f35-3m26`) is transitive via `@ducanh2912/next-pwa -> workbox-build -> glob`, with no upstream fix currently available. Re-check when `next-pwa`/`workbox` releases update.
+- Maintenance note: run `npm outdated` / `npm audit` only during periodic maintenance windows, not as a blocker for feature delivery.
 
 ## Open Decisions / Blockers
 - None.
