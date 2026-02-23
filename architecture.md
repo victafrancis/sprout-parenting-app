@@ -16,14 +16,17 @@ graph TD
     User((You)) -->|1. Type Natural Text| UI[Next.js Dashboard 'Smart Input']
     UI -->|2. Extract JSON Data| AI_Front[OpenRouter API]
     UI -->|3. Store Structured Data| DDB[(AWS DynamoDB)]
+    UI -->|4. Click 'Generate Weekly Plan'| API[Next.js API Route]
+    API -->|5. Invoke Async| Lambda[AWS Lambda Python]
     
-    Scheduler[EventBridge Scheduler] -->|4. Trigger (Sunday 8AM)| Lambda[AWS Lambda Python]
+    Scheduler[EventBridge Scheduler] -->|6. Trigger (Sunday 8AM, later)| Lambda
     
-    Lambda -->|5. Fetch Logs & Profile| DDB
-    Lambda -->|6. Fetch Research| S3[(S3 Knowledge Base)]
-    Lambda -->|7. Synthesize Weekly Plan| AI_Back[OpenRouter API]
-    Lambda -->|8. Deliver Plan| SES[Amazon SES]
-    SES -->|9. Email Notification| User
+    Lambda -->|7. Fetch Logs & Profile| DDB
+    Lambda -->|8. Fetch Research| S3[(S3 Knowledge Base)]
+    Lambda -->|9. Synthesize Weekly Plan| AI_Back[OpenRouter API]
+    Lambda -->|10. Write Markdown Artifact| S3
+    Lambda -->|11. Deliver Plan (optional)| SES[Amazon SES]
+    SES -->|12. Email Notification| User
 
 ```
 
@@ -38,7 +41,7 @@ We will use **AWS DynamoDB** with a flexible Single Table Design (STD).
 | --- | --- | --- | --- |
 | **Child Profile** | `USER#Yumi` | `PROFILE` | `birth_date` (String, `YYYY-MM-DD`), `milestones` (List), `schemas` (List), `interests` (List) |
 | **Daily Log** | `LOG#Yumi` | `DATE#2026-02-12` | `raw_text` (String), `key_takeaways` (List), `sentiment` (String) |
-| **Weekly Plan** | `PLAN#Yumi` | `WEEK#2026-02-16` | `overview` (Map), `weeklyGoals` (List), `activityMenu` (Map) |
+| **Weekly Plan Job Status (optional, later)** | `PLAN_JOB#Yumi` | `JOB#<requestId>` | `status` (String), `startedAt` (String), `completedAt` (String), `outputObjectKey` (String), `errorMessage` (String) |
 
 **S3 Storage Strategy**
 
@@ -66,7 +69,7 @@ The frontend acts as the "Control Plane" and relies on AI for frictionless data 
 * **Storage:** Saves the clean JSON directly to DynamoDB.
 
 2. **The Profile State:** View of the child's current milestones and schemas, fetched from DynamoDB.
-3. **The Play Plan:** A component-driven UI that fetches the most recent weekly plan (strict JSON payload) from DynamoDB and maps the data into interactive UI cards (e.g., Activity Menus, Goals).
+3. **The Play Plan:** A component-driven UI that fetches the most recent weekly plan markdown artifact from S3 (default: latest by `LastModified`) and maps headings/sections into interactive UI cards.
 
 ### Security Strategy (The Bouncer & Display Case)
 
@@ -80,24 +83,28 @@ To protect personal data while allowing recruiter access, we use **Next.js Middl
 
 ## 4. The Intelligence Engine (AWS Lambda)
 
-This is the "Worker" that runs once a week. It is completely isolated from the frontend.
+This is the "Worker" that runs in the background. It is isolated from the frontend and supports two trigger modes:
+
+1. **Manual trigger (now):** called by a Next.js API route from the Weekly Plan tab.
+2. **Scheduled trigger (later):** called by EventBridge on a weekly cadence.
 
 ### Logic Flow
 
-1. **Wake Up:** Triggered by EventBridge Scheduler.
+1. **Wake Up:** Triggered by Next.js API (manual) or EventBridge Scheduler (scheduled).
 2. **Context Assembly:**
 * Query DynamoDB for `USER#Yumi` (Current Profile).
 * Query DynamoDB for `LOG#Yumi` where date is > (Today - 7 days).
 3. **Fetch Research:**
 * Pull relevant developmental stage guidelines from S3 Knowledge Base.
 4. **Prompt Engineering:**
-* Constructs a rigid system prompt: *"You are an expert development guide. Based on these specific logs and this child's profile, generate a 5-day plan in strictly typed JSON matching our schema."*
+* Constructs a rigid system prompt: *"You are an expert development guide. Based on these specific logs and this child's profile, generate a 5-day plan markdown artifact with clear sections for weekly goals and activities."*
 5. **Inference & Storage:**
 * Sends payload to **OpenRouter** (using Gemini 3 Pro for deep context/reasoning).
-* Receives structured JSON response and performs a `PutItem` to DynamoDB (`PK=PLAN#Yumi`, `SK=WEEK#YYYY-MM-DD`) so the frontend can render it.
+* Receives model output and writes a new markdown object to S3 under `plans/<childId>/` (append-only timestamped key, for example `plans/Yumi/2026-02-23T13-45-00Z.md`).
+* The frontend reads the latest object by `LastModified` when no specific `objectKey` is requested.
 6. **Delivery:**
-* Parses the JSON into an HTML email template using Python.
-* Uses **Amazon SES** to email the formatted HTML plan to the parent.
+* Optionally converts the generated markdown into an HTML email template.
+* Uses **Amazon SES** to email the formatted weekly plan to the parent.
 
 
 ---
@@ -108,19 +115,21 @@ This is the "Worker" that runs once a week. It is completely isolated from the f
 
 1. **Next.js App Role (Amplify):**
 * Allow `PutItem/GetItem/UpdateItem` on `Sprout_Data`.
-* Allow `UpdateSchedule` on EventBridge.
+* Allow `InvokeFunction` on the weekly-plan Lambda for manual generation.
+* (Later) Allow `UpdateSchedule` on EventBridge if scheduling controls are managed from the app.
 
 
 2. **Lambda Worker Role:**
-* Allow `Query` on `Sprout_Data` (Read-Only).
-* Allow `GetObject` on S3 Knowledge Base.
+* Allow `Query` on `Sprout_Data` (Read profile + recent logs).
+* Allow `GetObject` on `development_guides/` in S3.
+* Allow `PutObject` on `plans/` in S3.
 * Allow `SendEmail` on SES.
 
 
 
 ### Environment Variables
 
-* **Next.js:** `DATA_MODE`, `REGION`, `DYNAMODB_TABLE`, `S3_WEEKLY_PLAN_BUCKET`, `S3_WEEKLY_PLAN_PREFIX`, `ADMIN_PASSCODE`, `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_REMEMBER_TTL_DAYS`, `OPENROUTER_API_KEY`.
+* **Next.js:** `DATA_MODE`, `REGION`, `DYNAMODB_TABLE`, `S3_WEEKLY_PLAN_BUCKET`, `S3_WEEKLY_PLAN_PREFIX`, `ADMIN_PASSCODE`, `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_REMEMBER_TTL_DAYS`, `OPENROUTER_API_KEY`, `WEEKLY_PLAN_LAMBDA_FUNCTION_NAME`.
 * **Lambda:** `OPENROUTER_API_KEY` (for weekly plan generation), `DYNAMODB_TABLE`, `S3_BUCKET`, `S3_DEVELOPMENT_GUIDES_PREFIX`, `S3_WEEKLY_PLANS_PREFIX`, `EMAIL_SOURCE`.
 
 For Amplify-hosted Next.js SSR, treat Amplify Console variables as build-environment inputs and explicitly hand off required server runtime values during build (via `amplify.yml`) by writing an allowlisted set into `.env.production` before `next build`. This keeps SSR runtime access deterministic (`process.env` in API routes/server components) while preserving least-privilege control over which variables are exposed.
@@ -148,12 +157,15 @@ For Amplify-hosted Next.js SSR, treat Amplify Console variables as build-environ
 ### Phase 4: The Brain (Day 5-6)
 
 * [ ] Write Python Lambda script to fetch 7 days of logs from DynamoDB.
-* [ ] Connect Lambda to OpenRouter to synthesize the weekly plan.
-* [ ] Set up Amazon SES and test email delivery.
+* [ ] Connect Lambda to OpenRouter to synthesize weekly-plan markdown.
+* [ ] Write markdown artifact to `plans/<childId>/` in S3.
+* [ ] Expose manual trigger from Next.js API route (`POST /api/v1/weekly-plan/generate`).
+* [ ] Add Weekly Plan UI button + polling to detect newly generated object.
+* [ ] Set up Amazon SES and test email delivery (optional for first release).
 
 ### Phase 5: Automation (Day 7)
 
-* [ ] Configure EventBridge Scheduler to trigger the Lambda every Sunday.
+* [ ] Configure EventBridge Scheduler to trigger the same Lambda every Sunday.
 
 ---
 
@@ -164,9 +176,9 @@ For Amplify-hosted Next.js SSR, treat Amplify Console variables as build-environ
 
 **Key Talking Points:**
 
-* **Architecture:** Decoupled the high-latency AI processing (Lambda) from the user-facing application (Next.js) using EventBridge.
-* **Single Table Design (NoSQL):** Designed a highly efficient DynamoDB schema utilizing PK/SK patterns to store user profiles, daily logs, and complex nested JSON weekly plans in a single table, optimizing for lightning-fast frontend retrieval.
-* **Strict Structured Output:** Engineered a reliable data pipeline using LLM deep-thinking capabilities to transform unstructured developmental research and daily logs into strictly typed JSON schemas for predictable, component-based UI rendering.
+* **Architecture:** Decoupled the high-latency AI processing (Lambda) from the user-facing application (Next.js) using a Split-Brain model with manual API trigger now and EventBridge automation later.
+* **Single Table Design (NoSQL):** Designed an efficient DynamoDB PK/SK strategy for profile and daily-log context retrieval powering weekly synthesis.
+* **Structured AI Output:** Engineered a reliable pipeline that transforms unstructured logs and developmental research into consistent weekly-plan markdown artifacts for predictable frontend rendering.
 * **Smart Extraction:** Replaced traditional form inputs with an LLM-powered extraction layer, converting unstructured user text into strict JSON for NoSQL storage.
 * **Edge Security:** Implemented Next.js Edge Middleware to protect PII via passcode authentication while maintaining a stateless "Demo Mode" for public portfolio showcasing.
 * **Cost Optimization:** Architected to run entirely within the AWS Free Tier using Lambda Layers and On-Demand DynamoDB Capacity.

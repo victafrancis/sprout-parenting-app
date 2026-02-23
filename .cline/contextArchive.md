@@ -2,6 +2,37 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Docs Alignment: Manual Weekly Plan Trigger + Lambda-First Order)
+- Updated architecture and README documentation to align with current and near-term weekly-plan strategy.
+
+### README updates
+- File: `README.md`
+- Clarified Split-Brain worker plane as background Lambda with **manual trigger now** and **scheduler later**.
+- Added weekly plan generation modes:
+  - manual flow: Weekly Plan UI action -> Next.js API route -> async Lambda invoke -> S3 markdown write
+  - scheduled flow (later): EventBridge triggers same Lambda
+- Added manual generation completion behavior (MVP polling for newest S3 plan object).
+- Added S3 naming guidance for append-only timestamped markdown keys.
+- Added env guidance:
+  - Next.js includes `WEEKLY_PLAN_LAMBDA_FUNCTION_NAME`
+  - Lambda env set includes `DYNAMODB_TABLE`, S3 prefixes, model/key, optional SES sender
+- Added explicit Lambda-first implementation checklist.
+
+### Architecture updates
+- File: `architecture.md`
+- Updated mermaid flow to include dual trigger path:
+  - manual path via Next.js API route
+  - scheduled path via EventBridge (later)
+- Updated worker logic to S3 markdown artifact output under `plans/<childId>/` and latest-object read behavior by `LastModified`.
+- Reframed weekly-plan data model note from DynamoDB JSON storage to optional **job-status entity** pattern (`PLAN_JOB#...`) for future progress tracking.
+- Updated IAM section:
+  - Next.js app role includes Lambda `InvokeFunction`
+  - Lambda role includes S3 `PutObject` for weekly plan artifacts
+- Updated roadmap phase ordering/details to prioritize Lambda worker + manual trigger + UI polling before scheduler.
+
+### Outcome
+- Documentation now matches product direction: build Lambda first, support parent-controlled on-demand generation, and layer scheduling later without redesigning worker logic.
+
 ## Latest Session Update (Memory Hygiene Cleanup: Active Context Reset)
 - Cleaned `activeContext.md` to keep it focused on **current** work only.
 - Moved stale status framing out of active context and preserved historical notes in archive.

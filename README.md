@@ -6,7 +6,7 @@ View demo here: https://main.d4h79py8dy0s1.amplifyapp.com/
 
 This project follows a **Split-Brain architecture**:
 - **Control Plane (Next.js app):** parent-facing UI and APIs for daily logs/profile updates
-- **Worker Plane (Lambda, planned):** scheduled weekly synthesis using DynamoDB + S3 knowledge base + OpenRouter
+- **Worker Plane (Lambda):** background weekly-plan synthesis using DynamoDB + S3 knowledge base + OpenRouter (manual trigger now, scheduler later)
 
 For full architecture details, see `architecture.md`.
 
@@ -47,6 +47,31 @@ Bucket: `sprout-knowledge-base`
 - The Weekly Plan UI shows all available markdown files in a dropdown and lets you switch between them.
 - If no markdown files exist for the prefix, the UI shows: `No weekly plans generated yet.`
 
+### Weekly plan generation modes (current + planned)
+
+The worker generation path is now designed with two trigger modes that call the same Lambda logic:
+
+1. **Manual generation (now):**
+   - Parent clicks **Generate new weekly plan** in the Weekly Plan tab.
+   - Next.js API route invokes Lambda asynchronously.
+   - Lambda assembles context (profile + recent logs + guide markdown), calls OpenRouter, and writes a new markdown artifact to `plans/<childId>/`.
+2. **Scheduled generation (later):**
+   - EventBridge Scheduler triggers the same Lambda on a weekly cadence.
+
+### Manual generation completion behavior (MVP)
+
+After manual trigger, the app detects completion by polling the weekly-plan read API and checking for a newly created latest markdown object under `plans/<childId>/`.
+
+- Success signal: latest `selectedObjectKey` changes (or a newer `lastModified` appears).
+- If generation takes longer than polling timeout, show a non-fatal message (for example: `Still generating, refresh in a bit.`).
+
+### S3 object naming recommendation for Lambda output
+
+Use append-only timestamped object keys so history is preserved and latest-selection stays deterministic.
+
+- Example: `plans/Yumi/2026-02-23T13-45-00Z.md`
+- Avoid overwriting previous plans.
+
 ---
 
 ## Run Modes
@@ -79,6 +104,18 @@ Core env vars used by Next.js server side:
 - `SESSION_REMEMBER_TTL_DAYS`
 - `OPENROUTER_API_KEY`
 - `OPENROUTER_MODEL`
+- `WEEKLY_PLAN_LAMBDA_FUNCTION_NAME` (for manual trigger API route)
+
+Core env vars used by the weekly-plan Lambda:
+
+- `REGION`
+- `DYNAMODB_TABLE`
+- `S3_BUCKET`
+- `S3_DEVELOPMENT_GUIDES_PREFIX`
+- `S3_WEEKLY_PLANS_PREFIX`
+- `OPENROUTER_API_KEY`
+- `OPENROUTER_MODEL`
+- `EMAIL_SOURCE` (optional if SES delivery is enabled)
 
 ---
 
@@ -277,3 +314,15 @@ If needed, explicitly set profile in shell before starting dev:
   ```cmd
   set AWS_PROFILE=sprout-local&& npm run dev
   ```
+
+---
+
+## Recommended implementation order (Lambda-first)
+
+If you are building the weekly-plan generation flow now, use this sequence:
+
+1. **Build Lambda worker first** (input/output contract, S3 write path, OpenRouter prompt, error handling).
+2. **Validate Lambda directly** (test event + CloudWatch logs + confirm markdown object appears in `plans/<childId>/`).
+3. **Add Next.js trigger API route** (`POST /api/v1/weekly-plan/generate`) to invoke Lambda async.
+4. **Add Weekly Plan UI button** and polling-based completion detection.
+5. **Add EventBridge schedule later** to call the same Lambda without changing worker logic.
