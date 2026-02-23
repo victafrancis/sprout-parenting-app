@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { getWeeklyPlan } from '@/lib/api/client'
 import ReactMarkdown from 'react-markdown'
 import type { WeeklyPlanListItem } from '@/lib/types/domain'
@@ -21,6 +21,12 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 
 type WeeklyPlanViewMode = 'document' | 'cards'
 
@@ -74,6 +80,19 @@ function createIdFromTitle(title: string, fallback: string) {
   return normalizedTitle
 }
 
+function createUniqueId(baseId: string, usedIds: Set<string>) {
+  let candidateId = baseId
+  let duplicateCounter = 2
+
+  while (usedIds.has(candidateId)) {
+    candidateId = `${baseId}-${duplicateCounter}`
+    duplicateCounter += 1
+  }
+
+  usedIds.add(candidateId)
+  return candidateId
+}
+
 function parseWeeklyPlanMarkdown(markdown: string): ParsedWeeklyPlan {
   const lines = markdown.split('\n')
 
@@ -84,6 +103,8 @@ function parseWeeklyPlanMarkdown(markdown: string): ParsedWeeklyPlan {
   let currentSection: WeeklyPlanSection | null = null
   let currentSubsection: WeeklyPlanSubsection | null = null
   let untitledSectionCount = 0
+  const usedSectionIds = new Set<string>()
+  const usedSubsectionIdsBySection = new Map<string, Set<string>>()
 
   function finalizeCurrentSubsection() {
     if (!currentSection || !currentSubsection) {
@@ -130,34 +151,56 @@ function parseWeeklyPlanMarkdown(markdown: string): ParsedWeeklyPlan {
     if (line.startsWith('## ')) {
       finalizeCurrentSection()
       const sectionTitle = line.replace('## ', '').trim()
+      const baseSectionId = createIdFromTitle(
+        sectionTitle,
+        `section-${sections.length + 1}`,
+      )
+      const uniqueSectionId = createUniqueId(baseSectionId, usedSectionIds)
       currentSection = {
-        id: createIdFromTitle(sectionTitle, `section-${sections.length + 1}`),
+        id: uniqueSectionId,
         title: sectionTitle,
         bodyMarkdown: '',
         subsections: [],
       }
+      usedSubsectionIdsBySection.set(uniqueSectionId, new Set<string>())
       continue
     }
 
     if (line.startsWith('### ')) {
       if (!currentSection) {
         untitledSectionCount += 1
+        const untitledBaseId = `untitled-section-${untitledSectionCount}`
+        const untitledSectionId = createUniqueId(untitledBaseId, usedSectionIds)
         currentSection = {
-          id: `untitled-section-${untitledSectionCount}`,
+          id: untitledSectionId,
           title: `Section ${untitledSectionCount}`,
           bodyMarkdown: '',
           subsections: [],
         }
+        usedSubsectionIdsBySection.set(untitledSectionId, new Set<string>())
       }
 
       finalizeCurrentSubsection()
 
       const subsectionTitle = line.replace('### ', '').trim()
+      const subsectionIdFallback = `${currentSection.id}-subsection-${currentSection.subsections.length + 1}`
+      const baseSubsectionId = createIdFromTitle(subsectionTitle, subsectionIdFallback)
+      const usedSubsectionIds = usedSubsectionIdsBySection.get(currentSection.id)
+
+      if (!usedSubsectionIds) {
+        usedSubsectionIdsBySection.set(currentSection.id, new Set<string>())
+      }
+
+      const safeUsedSubsectionIds =
+        usedSubsectionIdsBySection.get(currentSection.id) || new Set<string>()
+
+      const uniqueSubsectionId = createUniqueId(
+        baseSubsectionId,
+        safeUsedSubsectionIds,
+      )
+
       currentSubsection = {
-        id: createIdFromTitle(
-          subsectionTitle,
-          `${currentSection.id}-subsection-${currentSection.subsections.length + 1}`,
-        ),
+        id: uniqueSubsectionId,
         title: subsectionTitle,
         bodyMarkdown: '',
       }
@@ -247,8 +290,68 @@ export function WeeklyPlan() {
   const [viewMode, setViewMode] = useState<WeeklyPlanViewMode>('cards')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [collapsedSectionsById, setCollapsedSectionsById] = useState<
+    Record<string, boolean>
+  >({})
 
   const parsedPlan = useMemo(() => parseWeeklyPlanMarkdown(content), [content])
+  const sectionJumpItems = useMemo(() => {
+    return parsedPlan.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+    }))
+  }, [parsedPlan.sections])
+
+  const allSectionsCollapsed =
+    parsedPlan.sections.length > 0 &&
+    parsedPlan.sections.every((section) => collapsedSectionsById[section.id])
+
+  const allSectionsExpanded =
+    parsedPlan.sections.length > 0 &&
+    parsedPlan.sections.every((section) => !collapsedSectionsById[section.id])
+
+  useEffect(() => {
+    setCollapsedSectionsById((previousCollapsedSectionsById) => {
+      const nextCollapsedSectionsById: Record<string, boolean> = {}
+
+      for (const section of parsedPlan.sections) {
+        nextCollapsedSectionsById[section.id] =
+          previousCollapsedSectionsById[section.id] ?? false
+      }
+
+      return nextCollapsedSectionsById
+    })
+  }, [parsedPlan.sections])
+
+  function scrollToSection(sectionId: string) {
+    const targetSectionElement = document.getElementById(sectionId)
+
+    if (!targetSectionElement) {
+      return
+    }
+
+    targetSectionElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
+  function setAllSectionsCollapsed(shouldCollapse: boolean) {
+    const nextCollapsedSectionsById: Record<string, boolean> = {}
+
+    for (const section of parsedPlan.sections) {
+      nextCollapsedSectionsById[section.id] = shouldCollapse
+    }
+
+    setCollapsedSectionsById(nextCollapsedSectionsById)
+  }
+
+  function updateSingleSectionCollapseState(sectionId: string, shouldCollapse: boolean) {
+    setCollapsedSectionsById((previousCollapsedSectionsById) => ({
+      ...previousCollapsedSectionsById,
+      [sectionId]: shouldCollapse,
+    }))
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -359,6 +462,61 @@ export function WeeklyPlan() {
 
           {viewMode === 'cards' ? (
             <div className="space-y-4">
+              {sectionJumpItems.length > 2 ? (
+                <Card className="border-dashed bg-muted/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Jump to section</CardTitle>
+                    <CardDescription>
+                      Quick navigation for longer weekly plans.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {sectionJumpItems.map((jumpItem) => (
+                        <Button
+                          key={jumpItem.id}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            scrollToSection(jumpItem.id)
+                          }}
+                        >
+                          {jumpItem.title}
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {parsedPlan.sections.length > 1 ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAllSectionsCollapsed(false)
+                    }}
+                    disabled={allSectionsExpanded}
+                  >
+                    Expand all sections
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAllSectionsCollapsed(true)
+                    }}
+                    disabled={allSectionsCollapsed}
+                  >
+                    Collapse all sections
+                  </Button>
+                </div>
+              ) : null}
+
               <Card className="border-primary/40 bg-primary/5">
                 <CardHeader className="pb-3">
                   <CardDescription>Weekly plan overview</CardDescription>
@@ -373,72 +531,111 @@ export function WeeklyPlan() {
                 ) : null}
               </Card>
 
-              {parsedPlan.sections.map((section) => (
-                <Card key={section.id}>
-                  <CardHeader>
-                    <CardTitle className="text-xl">{section.title}</CardTitle>
-                  </CardHeader>
+              {parsedPlan.sections.map((section) => {
+                const isSectionCollapsed = collapsedSectionsById[section.id] ?? false
 
-                  <CardContent className="space-y-4">
-                    {section.bodyMarkdown.length > 0 ? (
-                      <ReactMarkdown components={markdownComponents}>
-                        {section.bodyMarkdown}
-                      </ReactMarkdown>
-                    ) : null}
-
-                    {section.subsections.map((subsection) => {
-                      const activityBlocks = splitMarkdownIntoActivityBlocks(
-                        subsection.bodyMarkdown,
-                      )
-
-                      if (activityBlocks.length > 0) {
-                        return (
-                          <div
-                            key={subsection.id}
-                            className="space-y-3 rounded-md border border-border bg-muted/30 p-3"
+                return (
+                  <Collapsible
+                    key={section.id}
+                    open={!isSectionCollapsed}
+                    onOpenChange={(isOpen) => {
+                      updateSingleSectionCollapseState(section.id, !isOpen)
+                    }}
+                  >
+                    <Card id={section.id}>
+                      <CardHeader className="flex flex-row items-center justify-between gap-3">
+                        <CardTitle className="text-xl">{section.title}</CardTitle>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-expanded={!isSectionCollapsed}
+                            aria-label={
+                              isSectionCollapsed
+                                ? `Expand ${section.title}`
+                                : `Collapse ${section.title}`
+                            }
                           >
-                            <h3 className="text-lg font-semibold text-foreground">
-                              {subsection.title}
-                            </h3>
+                            {isSectionCollapsed ? (
+                              <>
+                                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                                <span>Expand</span>
+                              </>
+                            ) : (
+                              <>
+                                <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                                <span>Collapse</span>
+                              </>
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </CardHeader>
 
-                            <div className="space-y-2">
-                              {activityBlocks.map((activityMarkdown, index) => (
-                                <Card key={`${subsection.id}-activity-${index + 1}`}>
-                                  <CardHeader className="pb-2">
-                                    <Badge variant="secondary" className="w-fit">
-                                      Activity {index + 1}
-                                    </Badge>
-                                  </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="space-y-4">
+                          {section.bodyMarkdown.length > 0 ? (
+                            <ReactMarkdown components={markdownComponents}>
+                              {section.bodyMarkdown}
+                            </ReactMarkdown>
+                          ) : null}
+
+                          {section.subsections.map((subsection) => {
+                            const activityBlocks = splitMarkdownIntoActivityBlocks(
+                              subsection.bodyMarkdown,
+                            )
+
+                            if (activityBlocks.length > 0) {
+                              return (
+                                <div
+                                  key={subsection.id}
+                                  className="space-y-3 rounded-md border border-border bg-muted/30 p-3"
+                                >
+                                  <h3 className="text-lg font-semibold text-foreground">
+                                    {subsection.title}
+                                  </h3>
+
+                                  <div className="space-y-2">
+                                    {activityBlocks.map((activityMarkdown, index) => (
+                                      <Card key={`${subsection.id}-activity-${index + 1}`}>
+                                        <CardHeader className="pb-2">
+                                          <Badge variant="secondary" className="w-fit">
+                                            Activity {index + 1}
+                                          </Badge>
+                                        </CardHeader>
+                                        <CardContent>
+                                          <ReactMarkdown components={markdownComponents}>
+                                            {activityMarkdown}
+                                          </ReactMarkdown>
+                                        </CardContent>
+                                      </Card>
+                                    ))}
+                                  </div>
+                                </div>
+                              )
+                            }
+
+                            return (
+                              <Card key={subsection.id} className="bg-muted/20">
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-lg">{subsection.title}</CardTitle>
+                                </CardHeader>
+                                {subsection.bodyMarkdown.length > 0 ? (
                                   <CardContent>
                                     <ReactMarkdown components={markdownComponents}>
-                                      {activityMarkdown}
+                                      {subsection.bodyMarkdown}
                                     </ReactMarkdown>
                                   </CardContent>
-                                </Card>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <Card key={subsection.id} className="bg-muted/20">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">{subsection.title}</CardTitle>
-                          </CardHeader>
-                          {subsection.bodyMarkdown.length > 0 ? (
-                            <CardContent>
-                              <ReactMarkdown components={markdownComponents}>
-                                {subsection.bodyMarkdown}
-                              </ReactMarkdown>
-                            </CardContent>
-                          ) : null}
-                        </Card>
-                      )
-                    })}
-                  </CardContent>
-                </Card>
-              ))}
+                                ) : null}
+                              </Card>
+                            )
+                          })}
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+                )
+              })}
             </div>
           ) : null}
 

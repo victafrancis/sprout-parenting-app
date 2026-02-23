@@ -2,6 +2,28 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Weekly Plan UX Polish: Quick Jump + Collapsible Cards)
+- Completed optional Weekly Plan Cards-mode polish in `components/WeeklyPlan.tsx`.
+
+### What changed
+- Added compact **Jump to section** index for longer plans:
+  - shows when there are more than 2 top-level sections
+  - each chip/button smooth-scrolls to its target section card
+- Added **collapsible top-level section cards** in Cards mode:
+  - per-section toggle: `Expand section` / `Collapse section`
+  - global controls: `Expand all sections` / `Collapse all sections`
+  - preserves existing subsection and activity-card rendering inside expanded content
+- Hardened markdown heading id generation:
+  - added duplicate-safe id suffixing (e.g., `section`, `section-2`, `section-3`)
+  - keeps quick-jump anchors and collapse state keys stable even with repeated headings
+
+### Validation
+- Production build completed successfully via `npm run build` (Next.js compile + route generation completed).
+
+### Notes
+- This work continues to respect markdown-driven structure (`#`, `##`, `###`) and does not hardcode section/day names.
+- Document view behavior remains unchanged.
+
 ## Latest Session Update (Daily Log Date Labels Fixed)
 - Fixed bug where Daily Log "Recent Activity" entries always displayed `Just now`.
 
