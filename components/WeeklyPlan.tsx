@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Loader2, MessageSquarePlus } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   acceptDailyLogCandidates,
   createDailyLog,
@@ -37,7 +38,6 @@ import {
 } from '@/components/ui/collapsible'
 import { ReferenceLogDialog } from '@/components/weekly-plan/ReferenceLogDialog'
 import { ProfileCandidateReviewDialog } from '@/components/daily-log/ProfileCandidateReviewDialog'
-import { LogSavedConfirmationDialog } from '@/components/daily-log/LogSavedConfirmationDialog'
 import {
   hasAnyCandidates,
   type CandidateGroupKey,
@@ -348,8 +348,6 @@ export function WeeklyPlan() {
   const [pendingCandidateLogStorageKey, setPendingCandidateLogStorageKey] =
     useState<string | null>(null)
   const [isApplyingProfileUpdates, setIsApplyingProfileUpdates] = useState(false)
-  const [isLogSavedConfirmationOpen, setIsLogSavedConfirmationOpen] =
-    useState(false)
 
   function removeCandidate(groupKey: CandidateGroupKey, value: string) {
     if (!pendingCandidates) {
@@ -549,11 +547,15 @@ export function WeeklyPlan() {
         planReference: pendingReferenceLogContext.planReference,
       })
 
+      toast.success('Daily log added', {
+        duration: 2800,
+        className:
+          '!bg-emerald-700 !text-white !border-emerald-800 dark:!bg-emerald-600 dark:!border-emerald-500 dark:!text-white',
+      })
+
       if (hasAnyCandidates(createdLogResponse.profileCandidates)) {
         setPendingCandidates(createdLogResponse.profileCandidates)
         setPendingCandidateLogStorageKey(createdLogResponse.log.storageKey ?? null)
-      } else {
-        setIsLogSavedConfirmationOpen(true)
       }
 
       closeReferenceLogDialog()
@@ -949,14 +951,6 @@ export function WeeklyPlan() {
         onSkipCandidates={handleSkipCandidates}
         onAcceptCandidates={() => {
           void handleAcceptCandidates()
-        }}
-      />
-
-      <LogSavedConfirmationDialog
-        isOpen={isLogSavedConfirmationOpen}
-        description="Your new referenced log was added successfully."
-        onClose={() => {
-          setIsLogSavedConfirmationOpen(false)
         }}
       />
     </div>

@@ -2,6 +2,61 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Success Toast Contrast Tuning)
+- Improved visibility of the "Daily log added" success toast in both light and dark themes using a darker green palette.
+
+### What changed
+- Updated toast styling in:
+  - `components/DailyLog.tsx`
+  - `components/WeeklyPlan.tsx`
+- `toast.success(...)` now includes explicit class overrides:
+  - light mode: dark emerald background + white text
+  - dark mode: slightly lighter emerald with strong border + white text
+
+### Style details
+- Applied toast class override:
+  - `!bg-emerald-700 !text-white !border-emerald-800 dark:!bg-emerald-600 dark:!border-emerald-500 dark:!text-white`
+
+### Behavior result
+- Save-success toast is now easier to read at a glance in both themes while keeping the same non-blocking toast workflow.
+
+### Validation
+- Ran TypeScript check:
+  - `npx tsc --noEmit >/tmp/sprout-tsc.log 2>&1; echo TS_EXIT_CODE:$?; tail -n 20 /tmp/sprout-tsc.log`
+  - Result: `TS_EXIT_CODE:0`
+
+## Latest Session Update (Toast-Based Daily Log Save Feedback)
+- Replaced blocking success confirmation dialogs with lightweight toast notifications for daily-log creation flows.
+
+### What changed
+- Mounted global Sonner toaster in app shell:
+  - `app/layout.tsx`
+  - added `Toaster` from `components/ui/sonner` under `ThemeProvider`
+  - position set to `top-center`
+
+- Updated `components/DailyLog.tsx`:
+  - added `toast` import from `sonner`
+  - after successful `createDailyLog(...)`, now calls:
+    - `toast.success('Daily log added', { duration: 2800 })`
+  - removed success-dialog state/usage (`LogSavedConfirmationDialog`) from this flow
+  - candidate review behavior remains intact when AI suggestions exist
+
+- Updated `components/WeeklyPlan.tsx`:
+  - added `toast` import from `sonner`
+  - after successful referenced `createDailyLog(...)`, now calls the same success toast
+  - removed success-dialog state/usage (`LogSavedConfirmationDialog`) from this flow
+  - candidate review behavior remains intact when AI suggestions exist
+
+### Behavior result
+- After **any successful daily log add** (from Daily Log tab or Weekly Plan referenced note), a non-blocking success toast appears for a few seconds.
+- This happens whether profile suggestions are present or not.
+- If suggestions are present, candidate review modal still appears as expected.
+
+### Validation
+- Ran TypeScript check with explicit status output:
+  - `npx tsc --noEmit >/tmp/sprout-tsc.log 2>&1; echo TS_EXIT_CODE:$?; tail -n 20 /tmp/sprout-tsc.log`
+  - Result: `TS_EXIT_CODE:0`
+
 ## Latest Session Update (Unified Post-Save Daily Log UX Across Tabs)
 - Implemented consistent post-save behavior for daily logs created from both:
   - `Daily Log` tab composer

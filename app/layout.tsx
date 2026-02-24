@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
 
 import './globals.css'
 
@@ -46,6 +47,7 @@ export default function RootLayout({
           storageKey="sprout-theme"
         >
           {children}
+          <Toaster position="top-center" />
         </ThemeProvider>
       </body>
     </html>

@@ -30,6 +30,7 @@
 * **Server Components by Default:** All components are Server Components (`.tsx`) unless they explicitly need interactivity (hooks, event listeners). Only then add `'use client'`.
 * **Fetch in Components:** Do not use `useEffect` for data fetching. Fetch data directly in Server Components using `await`.
 * **API calls:** Always use try/catch for api calls and implement proper error handling.
+* **Reusability** Create reusable components and utility functions whenever possible when adding new features.
 
 ### Readability Rules ("The Human Test")
 * **No "Magic" One-Liners:** Prefer verbose, clear logic over clever, dense one-liners.
