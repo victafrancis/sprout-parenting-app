@@ -1,10 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Pencil, Trash2 } from 'lucide-react'
+import { CircleHelp, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { getProfile, removeProfileValue } from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { useIsMobile } from '@/hooks/use-mobile'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +24,61 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import type { ChildProfile, RemovableProfileField } from '@/lib/types/domain'
+
+type ProfileSectionHeadingProps = {
+  title: string
+  tooltipText?: string
+}
+
+function ProfileSectionHeading({
+  title,
+  tooltipText,
+}: ProfileSectionHeadingProps) {
+  const isMobile = useIsMobile()
+
+  return (
+    <div className="flex items-center gap-2">
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      {tooltipText ? (
+        isMobile ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 text-muted-foreground"
+                aria-label={`More info about ${title}`}
+              >
+                <CircleHelp className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-3 text-xs leading-relaxed">
+              {tooltipText}
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 text-muted-foreground"
+                aria-label={`More info about ${title}`}
+              >
+                <CircleHelp className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs text-xs leading-relaxed">
+              {tooltipText}
+            </TooltipContent>
+          </Tooltip>
+        )
+      ) : null}
+    </div>
+  )
+}
 
 export function Profile() {
   const [profile, setProfile] = useState<ChildProfile | null>(null)
@@ -136,90 +199,106 @@ export function Profile() {
         </p>
       ) : null}
       
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">Age</h3>
-          <div className="text-3xl font-semibold text-foreground">{profile.ageMonths} Months</div>
-        </div>
+      <TooltipProvider>
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <ProfileSectionHeading title="Age" />
+            <div className="text-3xl font-semibold text-foreground">
+              {profile.ageMonths} Months
+            </div>
+          </div>
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">Milestones</h3>
-          <div className="flex flex-wrap gap-2">
-            {profile.milestones.map((milestone) => (
-              <div key={milestone} className="inline-flex items-center gap-1.5">
-                <Badge variant="secondary" className="text-sm px-3 py-1.5">
-                  {milestone}
-                </Badge>
-                {isEditMode ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => {
-                      setPendingRemoval({ field: 'milestones', value: milestone })
-                    }}
+          <div className="space-y-3">
+            <ProfileSectionHeading
+              title="Milestones"
+              tooltipText="Skills your child is developing or already showing, such as motor, language, and social abilities."
+            />
+            <div className="flex flex-wrap gap-2">
+              {profile.milestones.map((milestone) => (
+                <div key={milestone} className="inline-flex items-center gap-1.5">
+                  <Badge variant="secondary" className="text-sm px-3 py-1.5">
+                    {milestone}
+                  </Badge>
+                  {isEditMode ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        setPendingRemoval({ field: 'milestones', value: milestone })
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <ProfileSectionHeading
+              title="Active Schemas"
+              tooltipText="Current repeated learning and play patterns your child is showing. We use these patterns to tailor weekly activities."
+            />
+            <div className="flex flex-wrap gap-2">
+              {profile.activeSchemas.map((schema) => (
+                <div key={schema} className="inline-flex items-center gap-1.5">
+                  <Badge
+                    variant="outline"
+                    className="text-sm px-3 py-1.5 border-primary text-primary"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : null}
-              </div>
-            ))}
+                    {schema}
+                  </Badge>
+                  {isEditMode ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        setPendingRemoval({ field: 'activeSchemas', value: schema })
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <ProfileSectionHeading
+              title="Interests"
+              tooltipText="Topics, objects, and activities your child is naturally drawn to right now."
+            />
+            <div className="flex flex-wrap gap-2">
+              {profile.interests.map((interest) => (
+                <div key={interest} className="inline-flex items-center gap-1.5">
+                  <Badge className="text-sm px-3 py-1.5 bg-accent text-accent-foreground">
+                    {interest}
+                  </Badge>
+                  {isEditMode ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        setPendingRemoval({ field: 'interests', value: interest })
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">Active Schemas</h3>
-          <div className="flex flex-wrap gap-2">
-            {profile.activeSchemas.map((schema) => (
-              <div key={schema} className="inline-flex items-center gap-1.5">
-                <Badge variant="outline" className="text-sm px-3 py-1.5 border-primary text-primary">
-                  {schema}
-                </Badge>
-                {isEditMode ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => {
-                      setPendingRemoval({ field: 'activeSchemas', value: schema })
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">Interests</h3>
-          <div className="flex flex-wrap gap-2">
-            {profile.interests.map((interest) => (
-              <div key={interest} className="inline-flex items-center gap-1.5">
-                <Badge className="text-sm px-3 py-1.5 bg-accent text-accent-foreground">
-                  {interest}
-                </Badge>
-                {isEditMode ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => {
-                      setPendingRemoval({ field: 'interests', value: interest })
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      </TooltipProvider>
 
       <AlertDialog
         open={Boolean(pendingRemoval)}
