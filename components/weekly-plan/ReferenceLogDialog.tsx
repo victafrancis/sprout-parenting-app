@@ -42,6 +42,7 @@ export function ReferenceLogDialog({
       }}
     >
       <DialogContent
+        className="top-4 w-[calc(100%-1rem)] translate-y-0 max-h-[calc(100dvh-2rem)] overflow-y-auto sm:top-[50%] sm:w-full sm:translate-y-[-50%]"
         onInteractOutside={(event) => {
           event.preventDefault()
         }}
@@ -73,7 +74,7 @@ export function ReferenceLogDialog({
                 onEntryTextChange(event.target.value)
               }}
               placeholder="Example: Activity 2 went very well today. She focused for 10 minutes and smiled throughout."
-              className="min-h-[140px]"
+              className="min-h-[140px] max-h-[40dvh]"
             />
           </div>
 

@@ -2,6 +2,28 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Weekly Plan Referenced Log Modal Mobile Keyboard Fix)
+- Fixed mobile typing visibility issue where the keyboard could cover the referenced-log textarea.
+
+### What changed
+- Updated `components/weekly-plan/ReferenceLogDialog.tsx`:
+  - Added mobile-specific dialog positioning so the modal sits near the top on small screens instead of always being vertically centered.
+  - Preserved centered modal behavior on `sm+` breakpoints.
+  - Added viewport-aware height/scroll behavior on dialog content:
+    - `max-h-[calc(100dvh-2rem)]`
+    - `overflow-y-auto`
+  - Added textarea viewport-aware max height:
+    - `max-h-[40dvh]`
+
+### Behavior result
+- On mobile, the modal and text input remain visible and usable while the keyboard is open.
+- Long content can scroll inside the modal instead of being clipped behind the keyboard.
+
+### Validation
+- Ran TypeScript check:
+  - `npx tsc --noEmit >/tmp/sprout-tsc.log 2>&1; echo TS_EXIT_CODE:$?; tail -n 20 /tmp/sprout-tsc.log`
+  - Result: `TS_EXIT_CODE:0`
+
 ## Latest Session Update (Success Toast Contrast Tuning)
 - Improved visibility of the "Daily log added" success toast in both light and dark themes using a darker green palette.
 
