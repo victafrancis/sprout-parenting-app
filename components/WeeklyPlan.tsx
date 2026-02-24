@@ -2,9 +2,17 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Loader2, MessageSquarePlus } from 'lucide-react'
-import { createDailyLog, getWeeklyPlan } from '@/lib/api/client'
+import {
+  acceptDailyLogCandidates,
+  createDailyLog,
+  getWeeklyPlan,
+} from '@/lib/api/client'
 import ReactMarkdown from 'react-markdown'
-import type { PlanReference, WeeklyPlanListItem } from '@/lib/types/domain'
+import type {
+  PlanReference,
+  ProfileUpdateCandidates,
+  WeeklyPlanListItem,
+} from '@/lib/types/domain'
 import {
   Select,
   SelectContent,
@@ -28,6 +36,12 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { ReferenceLogDialog } from '@/components/weekly-plan/ReferenceLogDialog'
+import { ProfileCandidateReviewDialog } from '@/components/daily-log/ProfileCandidateReviewDialog'
+import { LogSavedConfirmationDialog } from '@/components/daily-log/LogSavedConfirmationDialog'
+import {
+  hasAnyCandidates,
+  type CandidateGroupKey,
+} from '@/components/daily-log/daily-log-utils'
 
 type WeeklyPlanViewMode = 'document' | 'cards'
 
@@ -329,7 +343,64 @@ export function WeeklyPlan() {
   const [referenceLogEntryText, setReferenceLogEntryText] = useState('')
   const [isSavingReferenceLog, setIsSavingReferenceLog] = useState(false)
   const [referenceLogError, setReferenceLogError] = useState<string | null>(null)
-  const [referenceLogNotice, setReferenceLogNotice] = useState<string | null>(null)
+  const [pendingCandidates, setPendingCandidates] =
+    useState<ProfileUpdateCandidates | null>(null)
+  const [pendingCandidateLogStorageKey, setPendingCandidateLogStorageKey] =
+    useState<string | null>(null)
+  const [isApplyingProfileUpdates, setIsApplyingProfileUpdates] = useState(false)
+  const [isLogSavedConfirmationOpen, setIsLogSavedConfirmationOpen] =
+    useState(false)
+
+  function removeCandidate(groupKey: CandidateGroupKey, value: string) {
+    if (!pendingCandidates) {
+      return
+    }
+
+    const updatedCandidates: ProfileUpdateCandidates = {
+      ...pendingCandidates,
+      [groupKey]: pendingCandidates[groupKey].filter(
+        (candidate) => candidate.value !== value,
+      ),
+    }
+
+    setPendingCandidates(updatedCandidates)
+  }
+
+  function handleSkipCandidates() {
+    setPendingCandidates(null)
+    setPendingCandidateLogStorageKey(null)
+  }
+
+  async function handleAcceptCandidates() {
+    if (!pendingCandidates) {
+      handleSkipCandidates()
+      return
+    }
+
+    try {
+      setIsApplyingProfileUpdates(true)
+      setReferenceLogError(null)
+
+      if (!pendingCandidateLogStorageKey) {
+        setReferenceLogError('Unable to apply profile updates because the log key is missing.')
+        return
+      }
+
+      await acceptDailyLogCandidates({
+        childId: 'Yumi',
+        storageKey: pendingCandidateLogStorageKey,
+        selectedCandidates: pendingCandidates,
+      })
+
+      handleSkipCandidates()
+    } catch (err) {
+      setReferenceLogError(
+        err instanceof Error ? err.message : 'Failed to apply profile updates',
+      )
+    } finally {
+      setIsApplyingProfileUpdates(false)
+    }
+  }
 
   const parsedPlan = useMemo(() => parseWeeklyPlanMarkdown(content), [content])
   const sectionJumpItems = useMemo(() => {
@@ -444,7 +515,6 @@ export function WeeklyPlan() {
 
   function openReferenceLogDialog(input: PendingReferenceLogContext) {
     setReferenceLogError(null)
-    setReferenceLogNotice(null)
     setReferenceLogEntryText('')
     setPendingReferenceLogContext(input)
     setIsReferenceLogDialogOpen(true)
@@ -473,13 +543,19 @@ export function WeeklyPlan() {
       setIsSavingReferenceLog(true)
       setReferenceLogError(null)
 
-      await createDailyLog({
+      const createdLogResponse = await createDailyLog({
         childId: 'Yumi',
         rawText: normalizedReferenceLogEntryText,
         planReference: pendingReferenceLogContext.planReference,
       })
 
-      setReferenceLogNotice('Log saved with reference context.')
+      if (hasAnyCandidates(createdLogResponse.profileCandidates)) {
+        setPendingCandidates(createdLogResponse.profileCandidates)
+        setPendingCandidateLogStorageKey(createdLogResponse.log.storageKey ?? null)
+      } else {
+        setIsLogSavedConfirmationOpen(true)
+      }
+
       closeReferenceLogDialog()
     } catch (err) {
       setReferenceLogError(err instanceof Error ? err.message : 'Failed to save referenced log')
@@ -522,12 +598,6 @@ export function WeeklyPlan() {
       {!isLoading && error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
-        </p>
-      ) : null}
-
-      {!isLoading && !error && referenceLogNotice ? (
-        <p className="text-sm text-emerald-600" role="status">
-          {referenceLogNotice}
         </p>
       ) : null}
 
@@ -863,6 +933,30 @@ export function WeeklyPlan() {
         onClose={closeReferenceLogDialog}
         onSave={() => {
           void handleSaveReferencedLog()
+        }}
+      />
+
+      <ProfileCandidateReviewDialog
+        isOpen={Boolean(pendingCandidates)}
+        pendingCandidates={pendingCandidates}
+        isApplyingProfileUpdates={isApplyingProfileUpdates}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            handleSkipCandidates()
+          }
+        }}
+        onRemoveCandidate={removeCandidate}
+        onSkipCandidates={handleSkipCandidates}
+        onAcceptCandidates={() => {
+          void handleAcceptCandidates()
+        }}
+      />
+
+      <LogSavedConfirmationDialog
+        isOpen={isLogSavedConfirmationOpen}
+        description="Your new referenced log was added successfully."
+        onClose={() => {
+          setIsLogSavedConfirmationOpen(false)
         }}
       />
     </div>

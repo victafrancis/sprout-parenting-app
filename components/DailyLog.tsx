@@ -15,6 +15,7 @@ import { DailyLogComposer } from '@/components/daily-log/DailyLogComposer'
 import { DailyLogEntryCard } from '@/components/daily-log/DailyLogEntryCard'
 import { ProfileCandidateReviewDialog } from '@/components/daily-log/ProfileCandidateReviewDialog'
 import { DeleteDailyLogDialog } from '@/components/daily-log/DeleteDailyLogDialog'
+import { LogSavedConfirmationDialog } from '@/components/daily-log/LogSavedConfirmationDialog'
 import {
   hasAnyCandidates,
   type CandidateGroupKey,
@@ -42,6 +43,8 @@ export function DailyLog() {
   )
   const [pendingCandidateLogStorageKey, setPendingCandidateLogStorageKey] =
     useState<string | null>(null)
+  const [isLogSavedConfirmationOpen, setIsLogSavedConfirmationOpen] =
+    useState(false)
 
   function loadDraftFromLocalStorage() {
     try {
@@ -177,6 +180,8 @@ export function DailyLog() {
         setPendingCandidates(createdLogResponse.profileCandidates)
         setPendingCandidateLogStorageKey(createdLogResponse.log.storageKey ?? null)
         setCandidateReviewOpen(true)
+      } else {
+        setIsLogSavedConfirmationOpen(true)
       }
 
       setLogEntry('')
@@ -346,6 +351,13 @@ export function DailyLog() {
         }}
         onConfirmDelete={() => {
           void handleConfirmDeleteLog()
+        }}
+      />
+
+      <LogSavedConfirmationDialog
+        isOpen={isLogSavedConfirmationOpen}
+        onClose={() => {
+          setIsLogSavedConfirmationOpen(false)
         }}
       />
     </div>

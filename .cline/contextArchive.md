@@ -2,6 +2,44 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Unified Post-Save Daily Log UX Across Tabs)
+- Implemented consistent post-save behavior for daily logs created from both:
+  - `Daily Log` tab composer
+  - `Weekly Plan` referenced-note flow
+
+### What changed
+- Added new shared confirmation dialog component:
+  - `components/daily-log/LogSavedConfirmationDialog.tsx`
+  - reusable AlertDialog that confirms: **New log added**
+
+- Updated `components/DailyLog.tsx`:
+  - after `createDailyLog(...)`:
+    - if profile candidates exist -> existing candidate review modal flow remains
+    - if no candidates exist -> opens new confirmation dialog
+  - wired `LogSavedConfirmationDialog` into page-level dialog stack
+
+- Updated `components/WeeklyPlan.tsx`:
+  - reused existing extraction response handling from `createDailyLog(...)`
+  - added candidate review flow parity with Daily Log tab:
+    - `pendingCandidates` state
+    - remove/skip/accept handlers
+    - `acceptDailyLogCandidates(...)` integration using created log `storageKey`
+    - reused `ProfileCandidateReviewDialog`
+  - if no profile candidates are returned after save, shows `LogSavedConfirmationDialog`
+  - removed prior inline status text approach and replaced with explicit confirmation dialog behavior
+
+### Behavior result
+- Weekly-plan-originated notes now follow the same AI extraction + profile suggestion workflow as normal daily logs.
+- Users now get explicit save confirmation even when no profile additions are suggested.
+- Both tabs now share a consistent “save outcome” UX:
+  - candidates found -> review dialog
+  - no candidates -> confirmation dialog
+
+### Validation
+- Ran TypeScript check with explicit log capture:
+  - `npx tsc --noEmit >/tmp/sprout-tsc.log 2>&1; echo TS_EXIT_CODE:$?; tail -n 20 /tmp/sprout-tsc.log`
+  - Result: `TS_EXIT_CODE:0`
+
 ## Latest Session Update (DailyLog Component Decomposition)
 - Refactored `components/DailyLog.tsx` into smaller, focused presentational components to reduce file length and improve readability while preserving behavior.
 
