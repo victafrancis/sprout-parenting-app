@@ -8,14 +8,17 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 type ReferenceLogDialogProps = {
   isOpen: boolean
   previewTitle: string | undefined
+  referenceLabel: string | undefined
   entryText: string
   errorMessage: string | null
   isSaving: boolean
   onEntryTextChange: (nextText: string) => void
+  onOpenReferencePreview: () => void
   onClose: () => void
   onSave: () => void
 }
@@ -23,10 +26,12 @@ type ReferenceLogDialogProps = {
 export function ReferenceLogDialog({
   isOpen,
   previewTitle,
+  referenceLabel,
   entryText,
   errorMessage,
   isSaving,
   onEntryTextChange,
+  onOpenReferencePreview,
   onClose,
   onSave,
 }: ReferenceLogDialogProps) {
@@ -59,9 +64,14 @@ export function ReferenceLogDialog({
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Referenced plan block
             </p>
-            <p className="rounded-md border bg-muted/20 p-2 text-sm text-foreground">
-              {previewTitle || 'No reference selected'}
-            </p>
+            <button type="button" onClick={onOpenReferencePreview} className="rounded-md">
+              <Badge
+                variant="outline"
+                className="max-w-full cursor-pointer text-left whitespace-normal hover:bg-muted"
+              >
+                Plan reference: {referenceLabel || previewTitle || 'No reference selected'}
+              </Badge>
+            </button>
           </div>
 
           <div className="space-y-1">

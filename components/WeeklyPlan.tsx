@@ -37,6 +37,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { ReferenceLogDialog } from '@/components/weekly-plan/ReferenceLogDialog'
+import { PlanReferencePreviewDialog } from '@/components/plan-reference/PlanReferencePreviewDialog'
 import { ProfileCandidateReviewDialog } from '@/components/daily-log/ProfileCandidateReviewDialog'
 import {
   hasAnyCandidates,
@@ -340,6 +341,8 @@ export function WeeklyPlan() {
   const [isReferenceLogDialogOpen, setIsReferenceLogDialogOpen] = useState(false)
   const [pendingReferenceLogContext, setPendingReferenceLogContext] =
     useState<PendingReferenceLogContext | null>(null)
+  const [selectedReferenceForPreview, setSelectedReferenceForPreview] =
+    useState<PlanReference | null>(null)
   const [referenceLogEntryText, setReferenceLogEntryText] = useState('')
   const [isSavingReferenceLog, setIsSavingReferenceLog] = useState(false)
   const [referenceLogError, setReferenceLogError] = useState<string | null>(null)
@@ -523,6 +526,18 @@ export function WeeklyPlan() {
     setPendingReferenceLogContext(null)
     setReferenceLogEntryText('')
     setReferenceLogError(null)
+  }
+
+  function openReferencePreviewFromLogDialog() {
+    if (!pendingReferenceLogContext) {
+      return
+    }
+
+    setSelectedReferenceForPreview(pendingReferenceLogContext.planReference)
+  }
+
+  function closeReferencePreview() {
+    setSelectedReferenceForPreview(null)
   }
 
   async function handleSaveReferencedLog() {
@@ -925,6 +940,7 @@ export function WeeklyPlan() {
       <ReferenceLogDialog
         isOpen={isReferenceLogDialogOpen}
         previewTitle={pendingReferenceLogContext?.previewTitle}
+        referenceLabel={pendingReferenceLogContext?.planReference.referenceLabel}
         entryText={referenceLogEntryText}
         errorMessage={referenceLogError}
         isSaving={isSavingReferenceLog}
@@ -932,10 +948,17 @@ export function WeeklyPlan() {
           setReferenceLogError(null)
           setReferenceLogEntryText(nextText)
         }}
+        onOpenReferencePreview={openReferencePreviewFromLogDialog}
         onClose={closeReferenceLogDialog}
         onSave={() => {
           void handleSaveReferencedLog()
         }}
+      />
+
+      <PlanReferencePreviewDialog
+        isOpen={Boolean(selectedReferenceForPreview)}
+        planReference={selectedReferenceForPreview}
+        onClose={closeReferencePreview}
       />
 
       <ProfileCandidateReviewDialog

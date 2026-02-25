@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import type { DailyLogEntry } from '@/lib/types/domain'
+import type { DailyLogEntry, PlanReference } from '@/lib/types/domain'
 import {
   getPlanReferenceSummary,
   hasAnyAppliedProfileUpdates,
@@ -13,12 +13,22 @@ import {
 type DailyLogEntryCardProps = {
   entry: DailyLogEntry
   onRequestDelete: (entry: DailyLogEntry) => void
+  onRequestViewReference: (planReference: PlanReference) => void
 }
 
 export function DailyLogEntryCard({
   entry,
   onRequestDelete,
+  onRequestViewReference,
 }: DailyLogEntryCardProps) {
+  function handleViewReference() {
+    if (!entry.planReference) {
+      return
+    }
+
+    onRequestViewReference(entry.planReference)
+  }
+
   return (
     <Card className="border-border">
       <CardHeader className="p-4 pb-3">
@@ -40,9 +50,15 @@ export function DailyLogEntryCard({
 
         {entry.planReference ? (
           <div className="pt-2">
-            <Badge variant="outline" className="text-xs">
-              Plan reference: {getPlanReferenceSummary(entry)}
-            </Badge>
+            <button
+              type="button"
+              onClick={handleViewReference}
+              className="rounded-md"
+            >
+              <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">
+                Plan reference: {getPlanReferenceSummary(entry)}
+              </Badge>
+            </button>
           </div>
         ) : null}
 

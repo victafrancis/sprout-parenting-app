@@ -11,11 +11,16 @@ import {
   getDailyLogs,
   getProfile,
 } from '@/lib/api/client'
-import type { DailyLogEntry, ProfileUpdateCandidates } from '@/lib/types/domain'
+import type {
+  DailyLogEntry,
+  PlanReference,
+  ProfileUpdateCandidates,
+} from '@/lib/types/domain'
 import { DailyLogComposer } from '@/components/daily-log/DailyLogComposer'
 import { DailyLogEntryCard } from '@/components/daily-log/DailyLogEntryCard'
 import { ProfileCandidateReviewDialog } from '@/components/daily-log/ProfileCandidateReviewDialog'
 import { DeleteDailyLogDialog } from '@/components/daily-log/DeleteDailyLogDialog'
+import { PlanReferencePreviewDialog } from '@/components/plan-reference/PlanReferencePreviewDialog'
 import {
   hasAnyCandidates,
   type CandidateGroupKey,
@@ -38,6 +43,8 @@ export function DailyLog() {
   const [isDeletingLog, setIsDeletingLog] = useState(false)
   const [pendingLogDeletion, setPendingLogDeletion] =
     useState<DailyLogEntry | null>(null)
+  const [selectedPlanReference, setSelectedPlanReference] =
+    useState<PlanReference | null>(null)
   const [pendingCandidates, setPendingCandidates] = useState<ProfileUpdateCandidates | null>(
     null,
   )
@@ -236,6 +243,14 @@ export function DailyLog() {
     setPendingCandidateLogStorageKey(null)
   }
 
+  function handleOpenPlanReferencePreview(planReference: PlanReference) {
+    setSelectedPlanReference(planReference)
+  }
+
+  function handleClosePlanReferencePreview() {
+    setSelectedPlanReference(null)
+  }
+
   async function handleConfirmDeleteLog() {
     if (!pendingLogDeletion) {
       return
@@ -305,6 +320,7 @@ export function DailyLog() {
               key={entry.id}
               entry={entry}
               onRequestDelete={setPendingLogDeletion}
+              onRequestViewReference={handleOpenPlanReferencePreview}
             />
           ))}
 
@@ -354,6 +370,12 @@ export function DailyLog() {
         onConfirmDelete={() => {
           void handleConfirmDeleteLog()
         }}
+      />
+
+      <PlanReferencePreviewDialog
+        isOpen={Boolean(selectedPlanReference)}
+        planReference={selectedPlanReference}
+        onClose={handleClosePlanReferencePreview}
       />
     </div>
   )
