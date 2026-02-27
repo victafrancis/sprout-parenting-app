@@ -8,6 +8,7 @@ import {
   createDailyLogService,
   deleteDailyLogService,
   listDailyLogsService,
+  updateDailyLogNoteService,
 } from '@/lib/server/services/daily-log.service'
 
 const getSchema = z.object({
@@ -40,12 +41,20 @@ const deleteSchema = z.object({
   storageKey: z.string().min(1),
 })
 
-const patchSchema = z.object({
+const patchCandidateSchema = z.object({
+  action: z.literal('accept-candidates').optional(),
   childId: z.string().min(1).default('Yumi'),
   storageKey: z.string().min(1),
   milestones: z.array(z.string()).default([]),
   activeSchemas: z.array(z.string()).default([]),
   interests: z.array(z.string()).default([]),
+})
+
+const patchEditNoteSchema = z.object({
+  action: z.literal('edit-note'),
+  childId: z.string().min(1).default('Yumi'),
+  storageKey: z.string().min(1),
+  rawText: z.string().min(1).max(5000),
 })
 
 export async function GET(request: Request) {
@@ -165,18 +174,34 @@ export async function PATCH(request: Request) {
     const useDemoModeForWrite = !mode.isAuthenticated
 
     const body = await request.json()
-    const parsed = patchSchema.safeParse(body)
+    const parsedCandidateUpdate = patchCandidateSchema.safeParse(body)
+    const parsedEditNoteUpdate = patchEditNoteSchema.safeParse(body)
 
-    if (!parsed.success) {
+    if (!parsedCandidateUpdate.success && !parsedEditNoteUpdate.success) {
+      return fail(400, 'VALIDATION_ERROR', 'Invalid request body')
+    }
+
+    if (parsedEditNoteUpdate.success) {
+      await updateDailyLogNoteService({
+        childId: parsedEditNoteUpdate.data.childId,
+        storageKey: parsedEditNoteUpdate.data.storageKey,
+        rawText: parsedEditNoteUpdate.data.rawText,
+        useDemoMode: useDemoModeForWrite,
+      })
+
+      return ok({ success: true })
+    }
+
+    if (!parsedCandidateUpdate.success) {
       return fail(400, 'VALIDATION_ERROR', 'Invalid request body')
     }
 
     const result = await acceptDailyLogCandidatesService({
-      childId: parsed.data.childId,
-      storageKey: parsed.data.storageKey,
-      milestones: parsed.data.milestones,
-      activeSchemas: parsed.data.activeSchemas,
-      interests: parsed.data.interests,
+      childId: parsedCandidateUpdate.data.childId,
+      storageKey: parsedCandidateUpdate.data.storageKey,
+      milestones: parsedCandidateUpdate.data.milestones,
+      activeSchemas: parsedCandidateUpdate.data.activeSchemas,
+      interests: parsedCandidateUpdate.data.interests,
       useDemoMode: useDemoModeForWrite,
     })
 

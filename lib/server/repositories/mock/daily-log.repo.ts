@@ -51,6 +51,26 @@ export class MockDailyLogRepository implements DailyLogRepository {
     return newLog
   }
 
+  async updateDailyLogNote(input: {
+    childId: string
+    storageKey: string
+    rawText: string
+  }) {
+    void input.childId
+
+    const trimmedRawText = input.rawText.trim()
+
+    const existingLogEntry = inMemoryLogs.find((logEntry) => {
+      return logEntry.storageKey === input.storageKey
+    })
+
+    if (!existingLogEntry) {
+      return
+    }
+
+    existingLogEntry.entry = trimmedRawText
+  }
+
   async saveAppliedProfileUpdates(input: {
     childId: string
     storageKey: string

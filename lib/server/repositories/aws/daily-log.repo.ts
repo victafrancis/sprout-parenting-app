@@ -176,6 +176,30 @@ export class AwsDailyLogRepository implements DailyLogRepository {
     }
   }
 
+  async updateDailyLogNote(input: {
+    childId: string
+    storageKey: string
+    rawText: string
+  }): Promise<void> {
+    const trimmedRawText = input.rawText.trim()
+
+    await dynamoDocClient.send(
+      new UpdateCommand({
+        TableName: serverConfig.dynamoTable,
+        Key: {
+          PK: `LOG#${input.childId}`,
+          SK: input.storageKey,
+        },
+        UpdateExpression: 'SET raw_text = :rawText, entry = :entry, updated_at = :updatedAt',
+        ExpressionAttributeValues: {
+          ':rawText': trimmedRawText,
+          ':entry': trimmedRawText,
+          ':updatedAt': new Date().toISOString(),
+        },
+      }),
+    )
+  }
+
   async saveAppliedProfileUpdates(input: {
     childId: string
     storageKey: string

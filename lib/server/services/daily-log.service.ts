@@ -59,6 +59,20 @@ export async function createDailyLogService(input: {
   })
 }
 
+export async function updateDailyLogNoteService(input: {
+  childId: string
+  storageKey: string
+  rawText: string
+  useDemoMode?: boolean
+}) {
+  const repository = getDailyLogRepository(Boolean(input.useDemoMode))
+  return repository.updateDailyLogNote({
+    childId: input.childId,
+    storageKey: input.storageKey,
+    rawText: input.rawText,
+  })
+}
+
 export async function acceptDailyLogCandidatesService(input: {
   childId: string
   storageKey: string

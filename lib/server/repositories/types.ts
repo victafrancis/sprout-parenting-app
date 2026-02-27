@@ -21,6 +21,11 @@ export interface DailyLogRepository {
     cursor?: string
   }): Promise<{ items: DailyLogEntry[]; nextCursor?: string | null }>
   createDailyLog(input: CreateDailyLogInput): Promise<DailyLogEntry>
+  updateDailyLogNote(input: {
+    childId: string
+    storageKey: string
+    rawText: string
+  }): Promise<void>
   saveAppliedProfileUpdates(input: {
     childId: string
     storageKey: string

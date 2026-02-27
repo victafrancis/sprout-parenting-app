@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,12 +12,14 @@ import {
 
 type DailyLogEntryCardProps = {
   entry: DailyLogEntry
+  onRequestEdit: (entry: DailyLogEntry) => void
   onRequestDelete: (entry: DailyLogEntry) => void
   onRequestViewReference: (planReference: PlanReference) => void
 }
 
 export function DailyLogEntryCard({
   entry,
+  onRequestEdit,
   onRequestDelete,
   onRequestViewReference,
 }: DailyLogEntryCardProps) {
@@ -34,17 +36,31 @@ export function DailyLogEntryCard({
       <CardHeader className="p-4 pb-3">
         <div className="flex items-start justify-between gap-3">
           <CardDescription className="text-xs">{entry.timeLabel}</CardDescription>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => {
-              onRequestDelete(entry)
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => {
+                onRequestEdit(entry)
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => {
+                onRequestDelete(entry)
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <CardTitle className="text-sm font-medium leading-relaxed">{entry.entry}</CardTitle>
 

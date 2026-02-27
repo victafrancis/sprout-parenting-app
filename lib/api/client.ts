@@ -165,6 +165,22 @@ export async function deleteDailyLog(input: {
   })
 }
 
+export async function updateDailyLogNote(input: {
+  childId: string
+  storageKey: string
+  rawText: string
+}) {
+  await fetchJson<{ success: boolean }>('/api/v1/daily-logs', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      action: 'edit-note',
+      childId: input.childId,
+      storageKey: input.storageKey,
+      rawText: input.rawText,
+    }),
+  })
+}
+
 export async function getWeeklyPlan(params?: { childId?: string; objectKey?: string }) {
   const search = new URLSearchParams()
   search.set('childId', params?.childId || 'Yumi')

@@ -10,6 +10,7 @@ import {
   deleteDailyLog,
   getDailyLogs,
   getProfile,
+  updateDailyLogNote,
 } from '@/lib/api/client'
 import type {
   DailyLogEntry,
@@ -20,6 +21,7 @@ import { DailyLogComposer } from '@/components/daily-log/DailyLogComposer'
 import { DailyLogEntryCard } from '@/components/daily-log/DailyLogEntryCard'
 import { ProfileCandidateReviewDialog } from '@/components/daily-log/ProfileCandidateReviewDialog'
 import { DeleteDailyLogDialog } from '@/components/daily-log/DeleteDailyLogDialog'
+import { EditDailyLogDialog } from '@/components/daily-log/EditDailyLogDialog'
 import { PlanReferencePreviewDialog } from '@/components/plan-reference/PlanReferencePreviewDialog'
 import {
   hasAnyCandidates,
@@ -40,6 +42,10 @@ export function DailyLog() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [logEntry, setLogEntry] = useState('')
   const [candidateReviewOpen, setCandidateReviewOpen] = useState(false)
+  const [isEditingLog, setIsEditingLog] = useState(false)
+  const [pendingLogEdit, setPendingLogEdit] = useState<DailyLogEntry | null>(null)
+  const [editingLogText, setEditingLogText] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
   const [isDeletingLog, setIsDeletingLog] = useState(false)
   const [pendingLogDeletion, setPendingLogDeletion] =
     useState<DailyLogEntry | null>(null)
@@ -251,6 +257,64 @@ export function DailyLog() {
     setSelectedPlanReference(null)
   }
 
+  function handleOpenEditLogDialog(entry: DailyLogEntry) {
+    setEditError(null)
+    setPendingLogEdit(entry)
+    setEditingLogText(entry.entry)
+  }
+
+  function handleCloseEditLogDialog() {
+    if (isEditingLog) {
+      return
+    }
+
+    setPendingLogEdit(null)
+    setEditingLogText('')
+    setEditError(null)
+  }
+
+  async function handleConfirmEditLog() {
+    if (!pendingLogEdit) {
+      return
+    }
+
+    if (!pendingLogEdit.storageKey) {
+      setEditError('This log cannot be edited because it has no storage key.')
+      return
+    }
+
+    const trimmedEditedText = editingLogText.trim()
+    if (trimmedEditedText.length === 0) {
+      setEditError('Log note cannot be empty.')
+      return
+    }
+
+    try {
+      setIsEditingLog(true)
+      setEditError(null)
+      setError(null)
+
+      await updateDailyLogNote({
+        childId: 'Yumi',
+        storageKey: pendingLogEdit.storageKey,
+        rawText: trimmedEditedText,
+      })
+
+      toast.success('Daily log updated', {
+        duration: 2800,
+        className:
+          '!bg-emerald-700 !text-white !border-emerald-800 dark:!bg-emerald-600 dark:!border-emerald-500 dark:!text-white',
+      })
+
+      await loadRecentActivityFirstPage()
+      handleCloseEditLogDialog()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update log entry')
+    } finally {
+      setIsEditingLog(false)
+    }
+  }
+
   async function handleConfirmDeleteLog() {
     if (!pendingLogDeletion) {
       return
@@ -319,6 +383,7 @@ export function DailyLog() {
             <DailyLogEntryCard
               key={entry.id}
               entry={entry}
+              onRequestEdit={handleOpenEditLogDialog}
               onRequestDelete={setPendingLogDeletion}
               onRequestViewReference={handleOpenPlanReferencePreview}
             />
@@ -369,6 +434,23 @@ export function DailyLog() {
         }}
         onConfirmDelete={() => {
           void handleConfirmDeleteLog()
+        }}
+      />
+
+      <EditDailyLogDialog
+        isOpen={Boolean(pendingLogEdit)}
+        noteText={editingLogText}
+        errorMessage={editError}
+        isSaving={isEditingLog}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseEditLogDialog()
+          }
+        }}
+        onNoteTextChange={setEditingLogText}
+        onCancel={handleCloseEditLogDialog}
+        onSave={() => {
+          void handleConfirmEditLog()
         }}
       />
 
