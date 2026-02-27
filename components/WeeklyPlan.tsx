@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Card,
   CardContent,
@@ -43,8 +42,6 @@ import {
   hasAnyCandidates,
   type CandidateGroupKey,
 } from '@/components/daily-log/daily-log-utils'
-
-type WeeklyPlanViewMode = 'document' | 'cards'
 
 type WeeklyPlanSection = {
   id: string
@@ -314,6 +311,69 @@ function getActivityTitleFromMarkdown(activityMarkdown: string) {
   return activityHeadingMatch[1]
 }
 
+function getFileNameFromObjectKey(objectKey: string) {
+  const keyParts = objectKey.split('/')
+  return keyParts[keyParts.length - 1] || objectKey
+}
+
+type PlanGeneratedInfo = {
+  displayText: string
+  isTimestampDate: boolean
+}
+
+function getPlanGeneratedOnLabel(plan: WeeklyPlanListItem | undefined) {
+  if (!plan) {
+    return null
+  }
+
+  const fileName =
+    plan.displayName && plan.displayName.trim().length > 0
+      ? plan.displayName.trim()
+      : getFileNameFromObjectKey(plan.objectKey)
+
+  const fileNameWithoutExtension = fileName.replace(/\.md$/i, '')
+  const timestampMatch = fileNameWithoutExtension.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2})[-:](\d{2})(?:[-:](\d{2}))?Z)?$/,
+  )
+
+  if (!timestampMatch) {
+    return null
+  }
+
+  const year = Number(timestampMatch[1])
+  const month = Number(timestampMatch[2])
+  const day = Number(timestampMatch[3])
+
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null
+  }
+
+  const generatedDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+
+  if (Number.isNaN(generatedDate.getTime())) {
+    return null
+  }
+
+  return {
+    displayText: new Intl.DateTimeFormat('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(generatedDate),
+    isTimestampDate: true,
+  } satisfies PlanGeneratedInfo
+}
+
 const markdownComponents = {
   h1: ({ node, ...props }: any) => <h1 className="text-3xl font-bold mt-6 mb-3" {...props} />,
   h2: ({ node, ...props }: any) => <h2 className="text-2xl font-bold mt-6 mb-3" {...props} />,
@@ -332,7 +392,6 @@ export function WeeklyPlan() {
   const [content, setContent] = useState('')
   const [availablePlans, setAvailablePlans] = useState<WeeklyPlanListItem[]>([])
   const [selectedObjectKey, setSelectedObjectKey] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<WeeklyPlanViewMode>('cards')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [collapsedSectionsById, setCollapsedSectionsById] = useState<
@@ -410,6 +469,24 @@ export function WeeklyPlan() {
       title: section.title,
     }))
   }, [parsedPlan.sections])
+  const selectedPlan = useMemo(() => {
+    if (availablePlans.length === 0) {
+      return undefined
+    }
+
+    const matchingPlan = availablePlans.find((plan) => {
+      return plan.objectKey === selectedObjectKey
+    })
+
+    if (matchingPlan) {
+      return matchingPlan
+    }
+
+    return availablePlans[0]
+  }, [availablePlans, selectedObjectKey])
+  const planGeneratedOnLabel = useMemo(() => {
+    return getPlanGeneratedOnLabel(selectedPlan)
+  }, [selectedPlan])
 
   const allSectionsCollapsed =
     parsedPlan.sections.length > 0 &&
@@ -603,6 +680,12 @@ export function WeeklyPlan() {
               ))}
             </SelectContent>
           </Select>
+
+          {planGeneratedOnLabel ? (
+            <p className="mt-2 text-sm font-medium text-foreground" role="note">
+              {`Plan Generated On: ${planGeneratedOnLabel.displayText}`}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -624,265 +707,164 @@ export function WeeklyPlan() {
 
       {!isLoading && !error && content.trim().length > 0 ? (
         <div className="mt-4 space-y-4">
-          <Tabs
-            value={viewMode}
-            onValueChange={(value) => {
-              setViewMode(value as WeeklyPlanViewMode)
-            }}
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="cards">Cards</TabsTrigger>
-              <TabsTrigger value="document">Document</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="space-y-4">
+            {sectionJumpItems.length > 2 ? (
+              <Card className="border-dashed bg-muted/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Jump to section</CardTitle>
+                  <CardDescription>
+                    Quick navigation for longer weekly plans.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {sectionJumpItems.map((jumpItem) => (
+                      <Button
+                        key={jumpItem.id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          scrollToSection(jumpItem.id)
+                        }}
+                      >
+                        {jumpItem.title}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
 
-          {viewMode === 'cards' ? (
-            <div className="space-y-4">
-              {sectionJumpItems.length > 2 ? (
-                <Card className="border-dashed bg-muted/20">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Jump to section</CardTitle>
-                    <CardDescription>
-                      Quick navigation for longer weekly plans.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {sectionJumpItems.map((jumpItem) => (
+            {parsedPlan.sections.length > 1 ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setAllSectionsCollapsed(false)
+                  }}
+                  disabled={allSectionsExpanded}
+                >
+                  Expand all sections
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setAllSectionsCollapsed(true)
+                  }}
+                  disabled={allSectionsCollapsed}
+                >
+                  Collapse all sections
+                </Button>
+              </div>
+            ) : null}
+
+            <Card className="border-primary/40 bg-primary/5">
+              <CardHeader className="pb-3">
+                <CardDescription>Weekly plan overview</CardDescription>
+                <CardTitle className="text-2xl">{parsedPlan.title}</CardTitle>
+              </CardHeader>
+              {parsedPlan.introMarkdown.length > 0 ? (
+                <CardContent>
+                  <ReactMarkdown components={markdownComponents}>
+                    {parsedPlan.introMarkdown}
+                  </ReactMarkdown>
+                </CardContent>
+              ) : null}
+            </Card>
+
+            {parsedPlan.sections.map((section) => {
+              const isSectionCollapsed = collapsedSectionsById[section.id] ?? false
+
+              return (
+                <Collapsible
+                  key={section.id}
+                  open={!isSectionCollapsed}
+                  onOpenChange={(isOpen) => {
+                    updateSingleSectionCollapseState(section.id, !isOpen)
+                  }}
+                >
+                  <Card id={section.id}>
+                    <CardHeader className="flex flex-row items-center justify-between gap-3">
+                      <CardTitle className="text-xl">{section.title}</CardTitle>
+                      <div className="flex items-center gap-2">
                         <Button
-                          key={jumpItem.id}
                           type="button"
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Log note for ${section.title}`}
                           onClick={() => {
-                            scrollToSection(jumpItem.id)
+                            openReferenceLogDialog({
+                              previewTitle: section.title,
+                              planReference: {
+                                planObjectKey: selectedObjectKey,
+                                sectionId: section.id,
+                                sectionTitle: section.title,
+                                referenceLabel: section.title,
+                                referenceContentMarkdown: section.bodyMarkdown,
+                                referenceSnippet: createReferenceSnippet(section.bodyMarkdown),
+                              },
+                            })
                           }}
                         >
-                          {jumpItem.title}
+                          <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
                         </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : null}
 
-              {parsedPlan.sections.length > 1 ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setAllSectionsCollapsed(false)
-                    }}
-                    disabled={allSectionsExpanded}
-                  >
-                    Expand all sections
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setAllSectionsCollapsed(true)
-                    }}
-                    disabled={allSectionsCollapsed}
-                  >
-                    Collapse all sections
-                  </Button>
-                </div>
-              ) : null}
-
-              <Card className="border-primary/40 bg-primary/5">
-                <CardHeader className="pb-3">
-                  <CardDescription>Weekly plan overview</CardDescription>
-                  <CardTitle className="text-2xl">{parsedPlan.title}</CardTitle>
-                </CardHeader>
-                {parsedPlan.introMarkdown.length > 0 ? (
-                  <CardContent>
-                    <ReactMarkdown components={markdownComponents}>
-                      {parsedPlan.introMarkdown}
-                    </ReactMarkdown>
-                  </CardContent>
-                ) : null}
-              </Card>
-
-              {parsedPlan.sections.map((section) => {
-                const isSectionCollapsed = collapsedSectionsById[section.id] ?? false
-
-                return (
-                  <Collapsible
-                    key={section.id}
-                    open={!isSectionCollapsed}
-                    onOpenChange={(isOpen) => {
-                      updateSingleSectionCollapseState(section.id, !isOpen)
-                    }}
-                  >
-                    <Card id={section.id}>
-                      <CardHeader className="flex flex-row items-center justify-between gap-3">
-                        <CardTitle className="text-xl">{section.title}</CardTitle>
-                        <div className="flex items-center gap-2">
+                        <CollapsibleTrigger asChild>
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon"
-                            aria-label={`Log note for ${section.title}`}
-                            onClick={() => {
-                              openReferenceLogDialog({
-                                previewTitle: section.title,
-                                planReference: {
-                                  planObjectKey: selectedObjectKey,
-                                  sectionId: section.id,
-                                  sectionTitle: section.title,
-                                  referenceLabel: section.title,
-                                  referenceContentMarkdown: section.bodyMarkdown,
-                                  referenceSnippet: createReferenceSnippet(section.bodyMarkdown),
-                                },
-                              })
-                            }}
-                          >
-                            <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
-                          </Button>
-
-                          <CollapsibleTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              aria-expanded={!isSectionCollapsed}
-                              aria-label={
-                                isSectionCollapsed
-                                  ? `Expand ${section.title}`
-                                  : `Collapse ${section.title}`
-                              }
-                            >
-                              {isSectionCollapsed ? (
-                                <>
-                                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                                  <span>Expand</span>
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronUp className="h-4 w-4" aria-hidden="true" />
-                                  <span>Collapse</span>
-                                </>
-                              )}
-                            </Button>
-                          </CollapsibleTrigger>
-                        </div>
-                      </CardHeader>
-
-                      <CollapsibleContent>
-                        <CardContent className="space-y-4">
-                          {section.bodyMarkdown.length > 0 ? (
-                            <ReactMarkdown components={markdownComponents}>
-                              {section.bodyMarkdown}
-                            </ReactMarkdown>
-                          ) : null}
-
-                          {section.subsections.map((subsection) => {
-                            const activityBlocks = splitMarkdownIntoActivityBlocks(
-                              subsection.bodyMarkdown,
-                            )
-
-                            if (activityBlocks.length > 0) {
-                              return (
-                                <div
-                                  key={subsection.id}
-                                  className="space-y-3 rounded-md border border-border bg-muted/30 p-3"
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <h3 className="text-lg font-semibold text-foreground">
-                                      {subsection.title}
-                                    </h3>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Log note for ${subsection.title}`}
-                                      onClick={() => {
-                                        openReferenceLogDialog({
-                                          previewTitle: `${section.title} > ${subsection.title}`,
-                                          planReference: {
-                                            planObjectKey: selectedObjectKey,
-                                            sectionId: section.id,
-                                            sectionTitle: section.title,
-                                            subsectionId: subsection.id,
-                                            subsectionTitle: subsection.title,
-                                            referenceLabel: `${section.title} > ${subsection.title}`,
-                                            referenceContentMarkdown:
-                                              subsection.bodyMarkdown,
-                                            referenceSnippet: createReferenceSnippet(
-                                              subsection.bodyMarkdown,
-                                            ),
-                                          },
-                                        })
-                                      }}
-                                    >
-                                      <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
-                                    </Button>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    {activityBlocks.map((activityMarkdown, index) => {
-                                      const activityTitle = getActivityTitleFromMarkdown(
-                                        activityMarkdown,
-                                      )
-
-                                      return (
-                                        <Card key={`${subsection.id}-activity-${index + 1}`}>
-                                          <CardHeader className="pb-2">
-                                            <div className="flex items-center justify-between gap-2">
-                                              <Badge variant="secondary" className="w-fit">
-                                                Activity {index + 1}
-                                              </Badge>
-                                              <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                aria-label={`Log note for ${subsection.title} activity ${index + 1}`}
-                                                onClick={() => {
-                                                  openReferenceLogDialog({
-                                                    previewTitle: `${section.title} > ${subsection.title} > Activity ${index + 1}`,
-                                                    planReference: {
-                                                      planObjectKey: selectedObjectKey,
-                                                      sectionId: section.id,
-                                                      sectionTitle: section.title,
-                                                      subsectionId: subsection.id,
-                                                      subsectionTitle: subsection.title,
-                                                      activityIndex: index + 1,
-                                                      activityTitle,
-                                                      referenceLabel: `${section.title} > ${subsection.title} > Activity ${index + 1}`,
-                                                      referenceContentMarkdown:
-                                                        activityMarkdown,
-                                                      referenceSnippet: createReferenceSnippet(
-                                                        activityMarkdown,
-                                                      ),
-                                                    },
-                                                  })
-                                                }}
-                                              >
-                                                <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
-                                              </Button>
-                                            </div>
-                                          </CardHeader>
-                                          <CardContent>
-                                            <ReactMarkdown components={markdownComponents}>
-                                              {activityMarkdown}
-                                            </ReactMarkdown>
-                                          </CardContent>
-                                        </Card>
-                                      )
-                                    })}
-                                  </div>
-                                </div>
-                              )
+                            size="sm"
+                            aria-expanded={!isSectionCollapsed}
+                            aria-label={
+                              isSectionCollapsed
+                                ? `Expand ${section.title}`
+                                : `Collapse ${section.title}`
                             }
+                          >
+                            {isSectionCollapsed ? (
+                              <>
+                                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                                <span>Expand</span>
+                              </>
+                            ) : (
+                              <>
+                                <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                                <span>Collapse</span>
+                              </>
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
+                    </CardHeader>
 
+                    <CollapsibleContent>
+                      <CardContent className="space-y-4">
+                        {section.bodyMarkdown.length > 0 ? (
+                          <ReactMarkdown components={markdownComponents}>
+                            {section.bodyMarkdown}
+                          </ReactMarkdown>
+                        ) : null}
+
+                        {section.subsections.map((subsection) => {
+                          const activityBlocks = splitMarkdownIntoActivityBlocks(
+                            subsection.bodyMarkdown,
+                          )
+
+                          if (activityBlocks.length > 0) {
                             return (
-                              <Card key={subsection.id} className="bg-muted/20">
-                                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
-                                  <CardTitle className="text-lg">{subsection.title}</CardTitle>
+                              <div
+                                key={subsection.id}
+                                className="space-y-3 rounded-md border border-border bg-muted/30 p-3"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <h3 className="text-lg font-semibold text-foreground">
+                                    {subsection.title}
+                                  </h3>
                                   <Button
                                     type="button"
                                     variant="ghost"
@@ -909,31 +891,112 @@ export function WeeklyPlan() {
                                   >
                                     <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
                                   </Button>
-                                </CardHeader>
-                                {subsection.bodyMarkdown.length > 0 ? (
-                                  <CardContent>
-                                    <ReactMarkdown components={markdownComponents}>
-                                      {subsection.bodyMarkdown}
-                                    </ReactMarkdown>
-                                  </CardContent>
-                                ) : null}
-                              </Card>
-                            )
-                          })}
-                        </CardContent>
-                      </CollapsibleContent>
-                    </Card>
-                  </Collapsible>
-                )
-              })}
-            </div>
-          ) : null}
+                                </div>
 
-          {viewMode === 'document' ? (
-            <div className="prose prose-sm prose-stone dark:prose-invert max-w-none mt-1">
-              <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
-            </div>
-          ) : null}
+                                <div className="space-y-2">
+                                  {activityBlocks.map((activityMarkdown, index) => {
+                                    const activityTitle = getActivityTitleFromMarkdown(
+                                      activityMarkdown,
+                                    )
+
+                                    return (
+                                      <Card key={`${subsection.id}-activity-${index + 1}`}>
+                                        <CardHeader className="pb-2">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <Badge variant="secondary" className="w-fit">
+                                              Activity {index + 1}
+                                            </Badge>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              aria-label={`Log note for ${subsection.title} activity ${index + 1}`}
+                                              onClick={() => {
+                                                openReferenceLogDialog({
+                                                  previewTitle: `${section.title} > ${subsection.title} > Activity ${index + 1}`,
+                                                  planReference: {
+                                                    planObjectKey: selectedObjectKey,
+                                                    sectionId: section.id,
+                                                    sectionTitle: section.title,
+                                                    subsectionId: subsection.id,
+                                                    subsectionTitle: subsection.title,
+                                                    activityIndex: index + 1,
+                                                    activityTitle,
+                                                    referenceLabel: `${section.title} > ${subsection.title} > Activity ${index + 1}`,
+                                                    referenceContentMarkdown:
+                                                      activityMarkdown,
+                                                    referenceSnippet: createReferenceSnippet(
+                                                      activityMarkdown,
+                                                    ),
+                                                  },
+                                                })
+                                              }}
+                                            >
+                                              <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+                                            </Button>
+                                          </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                          <ReactMarkdown components={markdownComponents}>
+                                            {activityMarkdown}
+                                          </ReactMarkdown>
+                                        </CardContent>
+                                      </Card>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          return (
+                            <Card key={subsection.id} className="bg-muted/20">
+                              <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
+                                <CardTitle className="text-lg">{subsection.title}</CardTitle>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={`Log note for ${subsection.title}`}
+                                  onClick={() => {
+                                    openReferenceLogDialog({
+                                      previewTitle: `${section.title} > ${subsection.title}`,
+                                      planReference: {
+                                        planObjectKey: selectedObjectKey,
+                                        sectionId: section.id,
+                                        sectionTitle: section.title,
+                                        subsectionId: subsection.id,
+                                        subsectionTitle: subsection.title,
+                                        referenceLabel: `${section.title} > ${subsection.title}`,
+                                        referenceContentMarkdown:
+                                          subsection.bodyMarkdown,
+                                        referenceSnippet: createReferenceSnippet(
+                                          subsection.bodyMarkdown,
+                                        ),
+                                      },
+                                    })
+                                  }}
+                                >
+                                  <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+                                </Button>
+                              </CardHeader>
+                              {subsection.bodyMarkdown.length > 0 ? (
+                                <CardContent>
+                                  <ReactMarkdown components={markdownComponents}>
+                                    {subsection.bodyMarkdown}
+                                  </ReactMarkdown>
+                                </CardContent>
+                              ) : null}
+                            </Card>
+                          )
+                        })}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              )
+            })}
+          </div>
         </div>
       ) : null}
 

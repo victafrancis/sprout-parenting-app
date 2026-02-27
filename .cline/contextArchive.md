@@ -2,6 +2,70 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Weekly Plan Generated-On Label + Cards-Only View)
+- Updated weekly plan selection UX to show generation metadata directly below the dropdown and simplified layout by removing Document view.
+
+### What changed
+- Updated [`components/WeeklyPlan.tsx`](components/WeeklyPlan.tsx):
+  - Added filename-based helper parsing for selected plan metadata:
+    - `getFileNameFromObjectKey(...)`
+    - `getPlanGeneratedOnLabel(...)`
+  - New generated label behavior under selector:
+    - if filename matches timestamp pattern (for example `2026-02-23T13-45-00Z.md`), show formatted date (`Wed, Feb 25, 2026` style)
+    - if filename is not timestamp-based, show raw filename as fallback
+  - Added selected-plan memo resolution and generated label memo.
+  - Removed view-mode complexity entirely:
+    - removed `WeeklyPlanViewMode`
+    - removed `viewMode` state
+    - removed tabs import and tabs selector UI
+    - removed Document render branch
+    - kept Cards layout as the single/default rendering path
+
+### Validation
+- Ran TypeScript check:
+  - `npx tsc --noEmit`
+  - Result: exit code `0`
+
+### Behavior result
+- Weekly plan dropdown now immediately shows contextual generation/source info for the selected artifact.
+- Weekly plan UI is simpler: Cards view only, no mode switching.
+
+## Latest Session Update (Generated Label Readability + Conditional Prefix)
+- Refined generated-info display styling and label logic in the Weekly Plan selector area.
+
+### What changed
+- Updated `components/WeeklyPlan.tsx`:
+  - Introduced a structured generated-info return type:
+    - `PlanGeneratedInfo` with `displayText` and `isTimestampDate`
+  - Updated `getPlanGeneratedOnLabel(...)` to return structured metadata:
+    - timestamp-based filename -> formatted date text + `isTimestampDate: true`
+    - non-timestamp filename -> raw filename + `isTimestampDate: false`
+  - Increased generated-info prominence below selector:
+    - changed style to `text-sm font-medium text-foreground`
+  - Conditional prefix behavior now matches product request:
+    - show `Plan Generated On: ...` only when timestamp parsing succeeds
+    - otherwise show filename only (without the prefix)
+
+### Validation
+- Ran TypeScript check:
+  - `npx tsc --noEmit`
+  - Result: exit code `0`
+
+## Latest Session Update (Hide Non-Timestamp Generated Info)
+- Tightened generated-info visibility rule for weekly plan selector metadata.
+
+### What changed
+- Updated [`components/WeeklyPlan.tsx`](components/WeeklyPlan.tsx):
+  - `getPlanGeneratedOnLabel(...)` now returns `null` when filename is not parseable as timestamp.
+  - Removed fallback display of raw filename for non-timestamp plans.
+  - Generated line now renders only for timestamp-based filenames, always as:
+    - `Plan Generated On: <formatted date>`
+
+### Validation
+- Ran TypeScript check:
+  - `npx tsc --noEmit`
+  - Result: exit code `0`
+
 ## Latest Session Update (Weekly Plan Referenced Log Modal Mobile Keyboard Fix)
 - Fixed mobile typing visibility issue where the keyboard could cover the referenced-log textarea.
 
