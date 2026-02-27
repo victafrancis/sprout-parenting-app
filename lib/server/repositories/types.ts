@@ -5,6 +5,8 @@ import type {
   DailyLogEntry,
   RemoveProfileValueInput,
   UpdateProfileCandidatesInput,
+  WeeklyPlanJob,
+  WeeklyPlanListItem,
   WeeklyPlanMarkdownPayload,
 } from '@/lib/types/domain'
 
@@ -36,4 +38,18 @@ export interface DailyLogRepository {
 
 export interface WeeklyPlanRepository {
   getWeeklyPlanMarkdown(input: { childId: string; objectKey?: string }): Promise<WeeklyPlanMarkdownPayload>
+  listWeeklyPlans(input: { childId: string }): Promise<WeeklyPlanListItem[]>
+  getPlanJob(input: { childId: string }): Promise<WeeklyPlanJob>
+  putPlanJobInProgress(input: { childId: string; startedAt: string }): Promise<WeeklyPlanJob>
+  putPlanJobCompleted(input: {
+    childId: string
+    completedAt: string
+    outputObjectKey: string | null
+  }): Promise<WeeklyPlanJob>
+  putPlanJobFailed(input: {
+    childId: string
+    failedAt: string
+    errorMessage: string
+  }): Promise<WeeklyPlanJob>
+  deleteWeeklyPlanObject(input: { childId: string; objectKey: string }): Promise<void>
 }

@@ -8,6 +8,7 @@ import type {
   DailyLogEntry,
   ProfileUpdateCandidates,
   RemovableProfileField,
+  WeeklyPlanJob,
   WeeklyPlanMarkdownPayload,
 } from '@/lib/types/domain'
 
@@ -193,6 +194,43 @@ export async function getWeeklyPlan(params?: { childId?: string; objectKey?: str
   )
 
   return payload.data
+}
+
+export async function generateWeeklyPlan(input: { childId: string }) {
+  const payload = await fetchJson<WeeklyPlanJob>('/api/v1/weekly-plan', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'generate',
+      childId: input.childId,
+    }),
+  })
+
+  return payload.data
+}
+
+export async function syncWeeklyPlanJobStatus(input: { childId: string }) {
+  const payload = await fetchJson<WeeklyPlanJob>('/api/v1/weekly-plan', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      action: 'sync-job-status',
+      childId: input.childId,
+    }),
+  })
+
+  return payload.data
+}
+
+export async function deleteWeeklyPlan(input: {
+  childId: string
+  objectKey: string
+}) {
+  await fetchJson<{ success: boolean }>('/api/v1/weekly-plan', {
+    method: 'DELETE',
+    body: JSON.stringify({
+      childId: input.childId,
+      objectKey: input.objectKey,
+    }),
+  })
 }
 
 export async function getAuthStatus() {

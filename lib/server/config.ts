@@ -35,6 +35,11 @@ export const serverConfig = {
   dynamoTable: process.env.DYNAMODB_TABLE || 'Sprout_Data',
   s3WeeklyPlanBucket: process.env.S3_WEEKLY_PLAN_BUCKET || '',
   s3WeeklyPlanPrefix: process.env.S3_WEEKLY_PLAN_PREFIX || 'plans',
+  weeklyPlanLambdaFunctionName: process.env.WEEKLY_PLAN_LAMBDA_FUNCTION_NAME || '',
+  weeklyPlanJobTimeoutSeconds: parsePositiveNumber(
+    process.env.WEEKLY_PLAN_JOB_TIMEOUT_SECONDS,
+    900,
+  ),
   adminPasscode: process.env.ADMIN_PASSCODE || '',
   sessionSecret: readOptionalEnv('SESSION_SECRET'),
   isAuthEnabled: Boolean(readOptionalEnv('SESSION_SECRET')),

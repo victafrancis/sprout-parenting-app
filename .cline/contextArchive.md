@@ -2,6 +2,35 @@
 
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
+## Latest Session Update (Weekly Plan Generation Controls + PLAN_JOB App-Owned Flow)
+- Implemented full weekly plan generation/delete controls with app-owned PLAN_JOB lifecycle and status polling.
+
+### What changed
+- Added PLAN_JOB domain types in [`lib/types/domain.ts`](lib/types/domain.ts:107).
+- Added Lambda/job config in [`lib/server/config.ts`](lib/server/config.ts:32) and [`.env.example`](.env.example:1).
+- Added Lambda client in [`lib/server/aws/clients.ts`](lib/server/aws/clients.ts:1) and dependency in [`package.json`](package.json:12).
+- Expanded weekly-plan repository contracts and implementations:
+  - [`lib/server/repositories/types.ts`](lib/server/repositories/types.ts:37)
+  - [`lib/server/repositories/aws/weekly-plan.repo.ts`](lib/server/repositories/aws/weekly-plan.repo.ts:1)
+  - [`lib/server/repositories/mock/weekly-plan.repo.ts`](lib/server/repositories/mock/weekly-plan.repo.ts:1)
+- Added generation/status-sync/delete orchestration in [`lib/server/services/weekly-plan.service.ts`](lib/server/services/weekly-plan.service.ts:1).
+- Added API routes for generate/sync/delete in [`app/api/v1/weekly-plan/route.ts`](app/api/v1/weekly-plan/route.ts:1).
+- Added client API methods in [`lib/api/client.ts`](lib/api/client.ts:198).
+- Updated Weekly Plan UI in [`components/WeeklyPlan.tsx`](components/WeeklyPlan.tsx:806):
+  - controls placed below “Plan Generated On”
+  - confirm dialogs for generate/delete
+  - generating spinner + disabled state
+  - polling-driven completion detection and refresh
+  - actions moved under collapsible “More options”
+- Added Amplify env propagation for new vars in [`amplify.yml`](amplify.yml:11).
+
+### Follow-up cleanup
+- Removed temporary diagnostics from missing-lambda error text in [`lib/server/services/weekly-plan.service.ts`](lib/server/services/weekly-plan.service.ts:109).
+
+### Validation
+- Installed deps via `npm install`.
+- Type check passed via `npx tsc --noEmit`.
+
 ## Latest Session Update (Weekly Plan Generated-On Label + Cards-Only View)
 - Updated weekly plan selection UX to show generation metadata directly below the dropdown and simplified layout by removing Document view.
 

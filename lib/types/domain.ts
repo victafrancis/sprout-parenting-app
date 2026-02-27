@@ -109,7 +109,20 @@ export type WeeklyPlanMarkdownPayload = {
   selectedObjectKey: string | null
   availablePlans: WeeklyPlanListItem[]
   markdown: string
+  planJob: WeeklyPlanJob
   source: 'mock' | 's3'
+}
+
+export type WeeklyPlanJobStatus = 'idle' | 'in_progress' | 'completed' | 'failed'
+
+export type WeeklyPlanJob = {
+  childId: string
+  status: WeeklyPlanJobStatus
+  startedAt: string | null
+  completedAt: string | null
+  failedAt: string | null
+  outputObjectKey: string | null
+  errorMessage: string | null
 }
 
 export type WeeklyPlanListItem = {

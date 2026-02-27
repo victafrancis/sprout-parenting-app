@@ -6,12 +6,16 @@ import { toast } from 'sonner'
 import {
   acceptDailyLogCandidates,
   createDailyLog,
+  deleteWeeklyPlan,
+  generateWeeklyPlan,
   getWeeklyPlan,
+  syncWeeklyPlanJobStatus,
 } from '@/lib/api/client'
 import ReactMarkdown from 'react-markdown'
 import type {
   PlanReference,
   ProfileUpdateCandidates,
+  WeeklyPlanJob,
   WeeklyPlanListItem,
 } from '@/lib/types/domain'
 import {
@@ -42,6 +46,16 @@ import {
   hasAnyCandidates,
   type CandidateGroupKey,
 } from '@/components/daily-log/daily-log-utils'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type WeeklyPlanSection = {
   id: string
@@ -323,6 +337,20 @@ type PlanGeneratedInfo = {
 
 const PLAN_GENERATED_TIMEZONE = 'America/Toronto'
 
+const CHILD_ID = 'Yumi'
+
+function createIdlePlanJob(childId: string): WeeklyPlanJob {
+  return {
+    childId,
+    status: 'idle',
+    startedAt: null,
+    completedAt: null,
+    failedAt: null,
+    outputObjectKey: null,
+    errorMessage: null,
+  }
+}
+
 function getPlanGeneratedOnLabel(plan: WeeklyPlanListItem | undefined) {
   if (!plan) {
     return null
@@ -411,8 +439,13 @@ export function WeeklyPlan() {
   const [content, setContent] = useState('')
   const [availablePlans, setAvailablePlans] = useState<WeeklyPlanListItem[]>([])
   const [selectedObjectKey, setSelectedObjectKey] = useState<string | null>(null)
+  const [planJob, setPlanJob] = useState<WeeklyPlanJob>(createIdlePlanJob(CHILD_ID))
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isStartingGeneration, setIsStartingGeneration] = useState(false)
+  const [isDeletingPlan, setIsDeletingPlan] = useState(false)
   const [collapsedSectionsById, setCollapsedSectionsById] = useState<
     Record<string, boolean>
   >({})
@@ -466,7 +499,7 @@ export function WeeklyPlan() {
       }
 
       await acceptDailyLogCandidates({
-        childId: 'Yumi',
+        childId: CHILD_ID,
         storageKey: pendingCandidateLogStorageKey,
         selectedCandidates: pendingCandidates,
       })
@@ -514,6 +547,9 @@ export function WeeklyPlan() {
   const allSectionsExpanded =
     parsedPlan.sections.length > 0 &&
     parsedPlan.sections.every((section) => !collapsedSectionsById[section.id])
+
+  const isPlanGenerationInProgress = planJob.status === 'in_progress'
+  const canDeleteSelectedPlan = Boolean(selectedObjectKey)
 
   useEffect(() => {
     setCollapsedSectionsById((previousCollapsedSectionsById) => {
@@ -565,12 +601,13 @@ export function WeeklyPlan() {
       try {
         setIsLoading(true)
         setError(null)
-        const result = await getWeeklyPlan({ childId: 'Yumi' })
+        const result = await getWeeklyPlan({ childId: CHILD_ID })
 
         if (isMounted) {
           setAvailablePlans(result.availablePlans)
           setSelectedObjectKey(result.selectedObjectKey)
           setContent(result.markdown)
+          setPlanJob(result.planJob)
         }
       } catch (err) {
         if (isMounted) {
@@ -590,23 +627,112 @@ export function WeeklyPlan() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isPlanGenerationInProgress) {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      void (async () => {
+        try {
+          const syncedJob = await syncWeeklyPlanJobStatus({ childId: CHILD_ID })
+          setPlanJob(syncedJob)
+
+          if (syncedJob.status === 'completed') {
+            const refreshedWeeklyPlan = await getWeeklyPlan({ childId: CHILD_ID })
+            setAvailablePlans(refreshedWeeklyPlan.availablePlans)
+            setSelectedObjectKey(refreshedWeeklyPlan.selectedObjectKey)
+            setContent(refreshedWeeklyPlan.markdown)
+            setPlanJob(refreshedWeeklyPlan.planJob)
+            toast.success('New weekly plan generated.')
+          }
+
+          if (syncedJob.status === 'failed') {
+            toast.error(
+              syncedJob.errorMessage || 'Weekly plan generation failed. Please try again.',
+            )
+          }
+        } catch (pollError) {
+          setError(
+            pollError instanceof Error
+              ? pollError.message
+              : 'Unable to sync weekly plan status',
+          )
+        }
+      })()
+    }, 4000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [isPlanGenerationInProgress])
+
   async function handlePlanChange(nextObjectKey: string) {
     try {
       setIsLoading(true)
       setError(null)
 
       const result = await getWeeklyPlan({
-        childId: 'Yumi',
+        childId: CHILD_ID,
         objectKey: nextObjectKey,
       })
 
       setAvailablePlans(result.availablePlans)
       setSelectedObjectKey(result.selectedObjectKey)
       setContent(result.markdown)
+      setPlanJob(result.planJob)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load weekly plan')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function handleGeneratePlan() {
+    try {
+      setIsStartingGeneration(true)
+      setError(null)
+      const nextPlanJob = await generateWeeklyPlan({ childId: CHILD_ID })
+      setPlanJob(nextPlanJob)
+      setIsGenerateDialogOpen(false)
+      toast.success('Weekly plan generation started.')
+    } catch (generationError) {
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : 'Unable to start weekly plan generation',
+      )
+    } finally {
+      setIsStartingGeneration(false)
+    }
+  }
+
+  async function handleDeleteSelectedPlan() {
+    if (!selectedObjectKey) {
+      return
+    }
+
+    try {
+      setIsDeletingPlan(true)
+      setError(null)
+      await deleteWeeklyPlan({
+        childId: CHILD_ID,
+        objectKey: selectedObjectKey,
+      })
+      setIsDeleteDialogOpen(false)
+
+      const refreshedWeeklyPlan = await getWeeklyPlan({ childId: CHILD_ID })
+      setAvailablePlans(refreshedWeeklyPlan.availablePlans)
+      setSelectedObjectKey(refreshedWeeklyPlan.selectedObjectKey)
+      setContent(refreshedWeeklyPlan.markdown)
+      setPlanJob(refreshedWeeklyPlan.planJob)
+      toast.success('Weekly plan deleted.')
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error ? deleteError.message : 'Unable to delete weekly plan',
+      )
+    } finally {
+      setIsDeletingPlan(false)
     }
   }
 
@@ -653,7 +779,7 @@ export function WeeklyPlan() {
       setReferenceLogError(null)
 
       const createdLogResponse = await createDailyLog({
-        childId: 'Yumi',
+        childId: CHILD_ID,
         rawText: normalizedReferenceLogEntryText,
         planReference: pendingReferenceLogContext.planReference,
       })
@@ -679,30 +805,95 @@ export function WeeklyPlan() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto pb-20">
-      {!error && availablePlans.length > 0 ? (
+      {!error ? (
         <div className="mb-4">
-          <Select
-            value={selectedObjectKey || undefined}
-            onValueChange={(value) => {
-              void handlePlanChange(value)
-            }}
-            disabled={isLoading}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a weekly plan" />
-            </SelectTrigger>
-            <SelectContent>
-              {availablePlans.map((plan) => (
-                <SelectItem key={plan.objectKey} value={plan.objectKey}>
-                  {plan.displayName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {availablePlans.length > 0 ? (
+            <Select
+              value={selectedObjectKey || undefined}
+              onValueChange={(value) => {
+                void handlePlanChange(value)
+              }}
+              disabled={isLoading || isPlanGenerationInProgress}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a weekly plan" />
+              </SelectTrigger>
+              <SelectContent>
+                {availablePlans.map((plan) => (
+                  <SelectItem key={plan.objectKey} value={plan.objectKey}>
+                    {plan.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
 
           {planGeneratedOnLabel ? (
             <p className="mt-2 text-sm font-medium text-foreground" role="note">
               {`Plan Generated On: ${planGeneratedOnLabel.displayText}`}
+            </p>
+          ) : null}
+
+          <Collapsible className="mt-3">
+            <CollapsibleTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="gap-2">
+                <span>Show options</span>
+                {isPlanGenerationInProgress ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Generating
+                  </span>
+                ) : null}
+              </Button>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="pt-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setIsGenerateDialogOpen(true)
+                  }}
+                  disabled={
+                    isLoading ||
+                    isStartingGeneration ||
+                    isDeletingPlan ||
+                    isPlanGenerationInProgress
+                  }
+                >
+                  {isStartingGeneration || isPlanGenerationInProgress ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating plan...
+                    </>
+                  ) : (
+                    'Generate New Plan'
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => {
+                    setIsDeleteDialogOpen(true)
+                  }}
+                  disabled={
+                    !canDeleteSelectedPlan ||
+                    isLoading ||
+                    isDeletingPlan ||
+                    isStartingGeneration ||
+                    isPlanGenerationInProgress
+                  }
+                >
+                  {isDeletingPlan ? 'Deleting...' : 'Delete Selected Plan'}
+                </Button>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {planJob.status === 'failed' && planJob.errorMessage ? (
+            <p className="mt-2 text-sm text-destructive" role="alert">
+              {planJob.errorMessage}
             </p>
           ) : null}
         </div>
@@ -1058,6 +1249,59 @@ export function WeeklyPlan() {
           void handleAcceptCandidates()
         }}
       />
+
+      <AlertDialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Generate a new weekly plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This runs the AI worker and may use paid tokens. The current generation lock
+              prevents duplicate runs.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isStartingGeneration}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void handleGeneratePlan()
+              }}
+              disabled={isStartingGeneration || isPlanGenerationInProgress}
+            >
+              {isStartingGeneration || isPlanGenerationInProgress
+                ? 'Generating plan...'
+                : 'Yes, generate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete selected weekly plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes{' '}
+              <span className="font-medium text-foreground">
+                {selectedPlan?.displayName || 'the selected file'}
+              </span>{' '}
+              from storage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingPlan}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void handleDeleteSelectedPlan()
+              }}
+              disabled={isDeletingPlan || !canDeleteSelectedPlan}
+            >
+              {isDeletingPlan ? 'Deleting...' : 'Yes, delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

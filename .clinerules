@@ -5,6 +5,7 @@
 1.  **`activeContext.md`** (Location: `.cline/activeContext.md`)
     * **What:** The "Now". Tracks current task, recent changes, and immediate next steps.
     * **Action:** Read this first. **Update this at the end of every session.**
+    * When I say "clear active context", clear the active context and move them in `contextArchive.md`
 
 2.  **`contextArchive.md`** (Location: `.cline/contextArchive.md`)
     * **What:** Historical session log and completed task context.
