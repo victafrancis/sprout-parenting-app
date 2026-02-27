@@ -321,6 +321,8 @@ type PlanGeneratedInfo = {
   isTimestampDate: boolean
 }
 
+const PLAN_GENERATED_TIMEZONE = 'America/Toronto'
+
 function getPlanGeneratedOnLabel(plan: WeeklyPlanListItem | undefined) {
   if (!plan) {
     return null
@@ -343,20 +345,33 @@ function getPlanGeneratedOnLabel(plan: WeeklyPlanListItem | undefined) {
   const year = Number(timestampMatch[1])
   const month = Number(timestampMatch[2])
   const day = Number(timestampMatch[3])
+  const hasTimestampTime = Boolean(timestampMatch[4] && timestampMatch[5])
+  const hour = hasTimestampTime ? Number(timestampMatch[4]) : 12
+  const minute = hasTimestampTime ? Number(timestampMatch[5]) : 0
+  const second = timestampMatch[6] ? Number(timestampMatch[6]) : 0
 
   if (
     Number.isNaN(year) ||
     Number.isNaN(month) ||
     Number.isNaN(day) ||
+    Number.isNaN(hour) ||
+    Number.isNaN(minute) ||
+    Number.isNaN(second) ||
     month < 1 ||
     month > 12 ||
     day < 1 ||
-    day > 31
+    day > 31 ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
   ) {
     return null
   }
 
-  const generatedDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+  const generatedDate = new Date(Date.UTC(year, month - 1, day, hour, minute, second))
 
   if (Number.isNaN(generatedDate.getTime())) {
     return null
@@ -368,7 +383,11 @@ function getPlanGeneratedOnLabel(plan: WeeklyPlanListItem | undefined) {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-      timeZone: 'UTC',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: PLAN_GENERATED_TIMEZONE,
+      timeZoneName: 'short',
     }).format(generatedDate),
     isTimestampDate: true,
   } satisfies PlanGeneratedInfo
