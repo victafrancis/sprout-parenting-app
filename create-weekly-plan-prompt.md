@@ -1,4 +1,4 @@
-Create a Weekly Developmental Plan using the exact structured format below.
+Create a Weekly Developmental Plan using the style and section flow described below.
 
 Child Information (completed based on information about the child):
 - Age (in months):
@@ -10,38 +10,47 @@ Child Information (completed based on information about the child):
 - Parent priority focus (optional):
 
 Plan Requirements:
-- Use the exact same headers and structure as the saved Weekly Developmental Plan template.
-- Choose a Primary Schema based on the behaviors described.
+- Follow the same overall section flow as this prompt, but minor header wording variations are allowed.
+- Choose a Primary Schema based on the behaviors described and current stage of the child.
 - Optionally include a Secondary Schema if relevant.
 - Write 2–3 observable, measurable goals.
-- Provide daily activity suggestions Monday–Friday (2–3 per day).
-- Include a Weekend repeat & extend section.
-- Include Caregiving-as-Learning scripts (at least 2 routines).
-- Include a “What to Observe” section.
-- Include End-of-Week Reflection prompts.
-- Include Next Week Progression guidance.
+- Provide daily activity suggestions Monday–Friday using this structure: 2 core activities + 1 variable third activity from the Activity Pool.
+- Keep Activities 1 and 2 as schema-aligned core activities each day.
+- For Activity 3, select from the Activity Pool and vary the selection across days when practical.
+- Across Monday–Friday, for the 3rd activity, use every Activity Pool type at least once, so one activity type is used twice in different contexts, making sure that each week day has 3 activities each.
+- The Activity Pool is prompt guidance only and must NOT appear as a rendered section in the final plan output.
+- Include all sections from list of headers below
 - Keep activities short (2–10 minutes), flexible, and repetition-friendly.
 - Ensure all activities are developmentally appropriate and safe for the child’s age.
 - Emphasize autonomy, responsive interaction, and repetition.
 - Avoid rigid scheduling — use menu-style options.
 
+Context Usage Rules:
+- Use the provided Runtime Context (profile + recent logs) as the primary source of truth.
+- Use Development Guides as supporting evidence and inspiration.
+- Do not invent concrete child facts that are not present in runtime context.
+- If data is missing, use neutral wording and practical options instead of fabricated details.
+- Ground recommendations in observed interests, sensitivities, and current mobility/communication level.
+
 Output Format:
-Use the following exact headers:
+Strictly follow section pattern (small wording variations allowed) below. All these sections are REQUIRED in the final ouput.
 
 # 🌱 Weekly Developmental Plan  
-# 🎯 Weekly Goals (Observable)  
-# 🧺 Weekly Activity Menu (Pick 3–5 per day, repeat favorites)  
-## Monday  
-## Tuesday  
-## Wednesday  
-## Thursday  
-## Friday  
-## Weekend (Repeat & Extend)  
-# 👶 Caregiving-as-Learning Scripts  
-# 🔎 What to Observe This Week  
-# 🔁 End-of-Week Reflection  
-# ➡️ How Next Week Might Progress  
-# 🛟 Safety Reminders
+## 📊 Logic for this Week's Plan (or similar)
+## 🎯 Weekly Goals (Observable)  
+## 🧺 Weekly Activity Menu  
+### Monday  
+### Tuesday  
+### Wednesday  
+### Thursday  
+### Friday  
+### Weekend (Repeat & Extend)
+## 👶 Caregiving-as-Learning Scripts  
+## 😴 Napping Tips
+## 🔎 What to Observe This Week  
+## 🔁 End-of-Week Reflection / Decision Rules  
+## ➡️ Next Week Progression (optional if covered in decision rules)  
+## 🛟 Safety Reminders
 
 Tone:
 - Clear
@@ -49,6 +58,28 @@ Tone:
 - Practical
 - Parent-friendly
 - Evidence-informed but not academic
+
+Activity Pool Guidance (Prompt-only guide — do not output this as a section in the final plan):
+- Use these as editable templates for selecting Activity 3 each day.
+- Across Monday–Friday, each type below must be used at least once.
+
+**[Activity Name] (Routine Integration)**
+- **Context:**
+- **Prompt:**
+- **[Insert any additional details or explanation]:**
+
+**[Activity Name] (Routine Focus Activity)**
+- **Script:**
+  "[Insert caregiver script with pause points.]"
+- **[Insert any additional details or explanation]:**
+
+**[Activity Name] (Communication or Social Activity)**
+- **Prompt strategy:**
+- **[Insert any additional details or explanation]:**
+
+**[Activity Name] (Choice-Based Interaction)**
+- **Offer:** "[Option A or Option B?]"
+- **[Insert any additional details or explanation]:**
 
 ---
 
@@ -58,7 +89,7 @@ Example Output:
 **Age:** [Insert age in months]  
 **Primary Focus Schema:** [e.g., Trajectory, Transporting, Rotation, Connecting, Enveloping, Orientation]  
 **Secondary Focus:** [Optional secondary schema or developmental domain]  
-**Routine Focus:** [Diapering / Feeding / Dressing / Bathing / Other]
+**Routine Focus:** [Diapering / Feeding / Dressing / Bathing / Other Relevant Based on Context]
 
 ---
 
@@ -77,87 +108,85 @@ Performs [specific action] in [X contexts] on [X days] this week.
 
 ---
 
-# 🧺 Weekly Activity Menu (Pick 3–5 per day, repeat favorites)
+# 🧺 Weekly Activity Menu
 
 Short (2–10 minute), flexible activity options.  
-Repetition is encouraged.
+Repetition is encouraged. Repeat favourites.
 
 ---
 
 ## Monday
 **1. [Activity Name] ([Schema or Domain])**  
-- Materials:  
-- Adult prompt:  
-- Extend/Progress option:  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
 **2. [Activity Name] ([Schema or Domain])**  
-- Materials:  
-- Adult prompt:  
-- Extend/Progress option:  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**3. [Optional Third Activity]**  
-- Materials:  
-- Adult prompt:  
+**3. [Pick one option from Activity Pool for Daily Activity 3]**   
 
 ---
 
 ## Tuesday
-**1. [Activity Name]**  
-- Materials:  
-- Adult prompt:  
-- Extend option:  
+**1. [Activity Name] ([Schema or Domain])**  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**2. [Activity Name]**  
-- Materials:  
-- Adult prompt:  
+**2. [Activity Name] ([Schema or Domain])**  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**3. [Optional Routine Integration]**  
-- Context:  
-- Prompt:  
+**3. [Pick one option from Activity Pool for Daily Activity 3]**   
 
 ---
 
 ## Wednesday
-**1. [Activity Name]**  
-- Materials:  
-- Adult prompt:  
+**1. [Activity Name] ([Schema or Domain])**  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**2. [Activity Name]**  
-- Materials:  
-- Adult prompt:  
+**2. [Activity Name] ([Schema or Domain])**  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**3. [Routine Focus Activity]**  
-- Script:  
-  “[Insert caregiver script with pause points.]”
+**3. [Pick one option from Activity Pool for Daily Activity 3]**   
 
 ---
 
 ## Thursday
-**1. [Activity Name]**  
-- Materials:  
-- Adult prompt:  
+**1. [Activity Name] ([Schema or Domain])**  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**2. [Activity Name]**  
-- Materials:  
-- Adult prompt:  
+**2. [Activity Name] ([Schema or Domain])**  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**3. [Communication or Social Activity]**  
-- Prompt strategy:  
+**3. [Pick one option from Activity Pool for Daily Activity 3]**  
 
 ---
 
 ## Friday
-**1. [Activity Name]**  
-- Materials:  
-- Adult prompt:  
+**1. [Activity Name] ([Schema or Domain])**  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**2. [Activity Name]**  
-- Materials:  
-- Adult prompt:  
+**2. [Activity Name] ([Schema or Domain])**  
+- **Materials:**  
+- **Adult prompt:**  
+- **Extend/Progress option:**  
 
-**3. [Choice-Based Interaction]**  
-- Offer: “[Option A or Option B?]”  
-- Pause for response.
+**3. [Pick one option from Activity Pool for Daily Activity 3]**    
 
 ---
 
@@ -184,6 +213,16 @@ Optional progression ideas:
 - Pause for response.  
 - Offer simple choices.  
 - Encourage independence.
+
+---
+
+# 😴 Napping Tips
+
+- Align nap suggestions to child age and observed sleep cues.
+- Keep nap guidance practical and flexible (no rigid schedule requirements).
+- Suggest a short pre-nap wind-down routine with responsive caregiver language.
+- If naps are short or resisted, suggest one small adjustment at a time.
+- Include one line for caregiver reflection on what helped this week.
 
 ---
 

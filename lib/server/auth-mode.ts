@@ -11,11 +11,15 @@ export async function getRequestMode() {
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
   const validSession = verifySessionToken(sessionCookie)
 
-  let mode: RequestAccessMode = 'unauthenticated'
+  let mode: RequestAccessMode = 'demo'
 
   if (validSession) {
     mode = 'authenticated'
   } else if (demoCookieEnabled) {
+    mode = 'demo'
+  } else {
+    // Treat first-time visitors as demo users immediately, even before
+    // middleware-set cookies are present on follow-up requests.
     mode = 'demo'
   }
 

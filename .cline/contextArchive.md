@@ -1,5 +1,49 @@
 # Context Archive
 
+## Latest Session Update (First-Load Demo Mode Auth Fix)
+- Resolved issue where a brand-new browser session could briefly show unauthorized messaging instead of loading demo mode immediately.
+
+### Root cause
+- The first API request could be evaluated before the middleware-set demo cookie was available on that same request.
+- In that timing window, [`getRequestMode()`](lib/server/auth-mode.ts:7) could resolve as `unauthenticated`, which surfaced “Please login or continue in demo mode”.
+
+### What changed
+- Updated auth mode default in [`lib/server/auth-mode.ts`](lib/server/auth-mode.ts) so no-session/no-demo-cookie requests resolve to demo by default.
+- Preserved authenticated precedence when a valid session exists.
+- Added temporary debug logs during diagnosis and removed them after confirming behavior.
+
+### Result
+- First-time visitors now land directly in demo mode on Weekly Plan without transient unauthorized messaging.
+
+### Notes
+- `npm run lint` still reports a separate environment/tooling issue (`Invalid project directory .../lint`), unrelated to this auth fix.
+
+> Archived snapshot migrated from `.cline/activeContext.md` on 2026-03-08.
+
+## Active Context Migration (User requested: clear active context)
+
+### Previous Current Task
+- Refine weekly plan generation prompt structure for better variability and add napping guidance.
+
+### Previous Current Status
+- Updated weekly plan prompt template to add a dedicated napping section and an Activity 3 pool pattern so day-by-day third activities vary.
+- Prompt now asks for two core activities plus one pooled variable activity per day.
+- Refined prompt so Activity Pool is guidance-only (not output as a section in generated plan), and requires all pool types to be used at least once across Monday–Friday.
+- Restored full editable Activity Pool templates in prompt-only guidance so each pool type can be customized without rendering a pool section in final output.
+
+### Previous Watch Items
+- Dependency/security monitor: `minimatch` advisory (`GHSA-3ppc-4f35-3m26`) remains transitive via `@ducanh2912/next-pwa -> workbox-build -> glob`.
+
+### Previous Open Decisions / Blockers
+- Validate a fresh generated weekly plan output from S3 to confirm model follows new Activity Pool format consistently.
+
+### Previous Immediate Next Steps
+1. Regenerate a weekly plan and verify Activity 3 varies across days.
+2. Verify Monday–Friday each include Activity 3 with explicit type usage and all pool types represented at least once.
+
+### Previous Last Updated
+- 2026-03-05
+
 > Archived snapshot migrated from `.cline/activeContext.md` on 2026-02-20.
 
 ## Latest Session Update (Weekly Plan Generation Controls + PLAN_JOB App-Owned Flow)

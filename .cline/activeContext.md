@@ -4,7 +4,7 @@
 No active implementation task.
 
 ## Current Status
-- Active context cleared per request.
+- Active context reset after completing first-load demo auth fix.
 
 ## Watch Items
 - Dependency/security monitor: `minimatch` advisory (`GHSA-3ppc-4f35-3m26`) remains transitive via `@ducanh2912/next-pwa -> workbox-build -> glob`.
@@ -16,4 +16,4 @@ No active implementation task.
 1. Await next feature request.
 
 ## Last Updated
-2026-02-27
+2026-03-08
