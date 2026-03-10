@@ -1,5 +1,51 @@
 # Context Archive
 
+## Latest Session Update (Schema Knowledge Modal + Global Cache-Aside Generation)
+- Completed Active Schema “learn more” feature with global cache-aside AI generation and persistence.
+
+### What changed
+- Added schema knowledge domain model:
+  - [`SchemaKnowledgeRecord`](lib/types/domain.ts:10)
+- Added repository contract and implementations:
+  - [`SchemaKnowledgeRepository`](lib/server/repositories/types.ts:58)
+  - AWS: [`AwsSchemaKnowledgeRepository`](lib/server/repositories/aws/schema-knowledge.repo.ts:40)
+  - Mock: [`MockSchemaKnowledgeRepository`](lib/server/repositories/mock/schema-knowledge.repo.ts:10)
+  - wiring: [`getSchemaKnowledgeRepository()`](lib/server/repositories/index.ts:36)
+- Added schema knowledge service flow:
+  - generation/read logic in [`schema-knowledge.service.ts`](lib/server/services/schema-knowledge.service.ts:1)
+  - cache-aside behavior: read cache first, generate on miss, persist, return
+  - uses existing env model pattern: [`OPENROUTER_MODEL`](lib/server/services/schema-knowledge.service.ts:43)
+- Added API surface:
+  - `GET /api/v1/schema-knowledge?schemaName=...`
+  - `POST /api/v1/schema-knowledge` (`action: generate`)
+  - route: [`app/api/v1/schema-knowledge/route.ts`](app/api/v1/schema-knowledge/route.ts:1)
+- Added client API helpers:
+  - [`getSchemaKnowledge()`](lib/api/client.ts:241)
+  - [`generateSchemaKnowledge()`](lib/api/client.ts:252)
+- Updated profile UX:
+  - Active Schema pills now clickable in view mode in [`components/Profile.tsx`](components/Profile.tsx:334)
+  - confirm-first dialog on cache miss (“Do you want to learn more about …?”)
+  - modal renders markdown explanation and generation metadata
+- Updated architecture documentation:
+  - added Schema Knowledge cache-aside feature + DynamoDB entity in [`architecture.md`](architecture.md:40)
+  - env section now includes [`OPENROUTER_MODEL`](architecture.md:141)
+
+### DynamoDB entity added
+- `PK = SCHEMA_KNOWLEDGE`
+- `SK = SCHEMA#<normalizedSchemaName>`
+- attributes:
+  - `schema_name`
+  - `normalized_schema_name`
+  - `content_markdown`
+  - `generated_at`
+  - `model`
+  - `source`
+
+### Validation
+- Build succeeded via [`npm run build`](package.json:8), including [`/api/v1/schema-knowledge`](app/api/v1/schema-knowledge/route.ts:1).
+
+> Archived snapshot migrated from [`.cline/activeContext.md`](.cline/activeContext.md) on 2026-03-10.
+
 ## Active Context Migration (User requested: clear active context)
 
 ### Previous Current Task

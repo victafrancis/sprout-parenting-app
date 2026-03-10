@@ -8,6 +8,7 @@ import type {
   DailyLogEntry,
   ProfileUpdateCandidates,
   RemovableProfileField,
+  SchemaKnowledgeRecord,
   WeeklyPlanJob,
   WeeklyPlanMarkdownPayload,
 } from '@/lib/types/domain'
@@ -235,6 +236,29 @@ export async function deleteWeeklyPlan(input: {
 
 export async function getAuthStatus() {
   const payload = await fetchJson<AuthStatusResponse>('/api/auth/status')
+  return payload.data
+}
+
+export async function getSchemaKnowledge(input: { schemaName: string }) {
+  const search = new URLSearchParams()
+  search.set('schemaName', input.schemaName)
+
+  const payload = await fetchJson<SchemaKnowledgeRecord>(
+    `/api/v1/schema-knowledge?${search.toString()}`,
+  )
+
+  return payload.data
+}
+
+export async function generateSchemaKnowledge(input: { schemaName: string }) {
+  const payload = await fetchJson<SchemaKnowledgeRecord>('/api/v1/schema-knowledge', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'generate',
+      schemaName: input.schemaName,
+    }),
+  })
+
   return payload.data
 }
 

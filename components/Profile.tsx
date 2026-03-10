@@ -2,7 +2,13 @@
 
 import { type ReactNode, useEffect, useState } from 'react'
 import { ChevronDown, CircleHelp, Loader2, Pencil, Trash2 } from 'lucide-react'
-import { getProfile, removeProfileValue } from '@/lib/api/client'
+import ReactMarkdown from 'react-markdown'
+import {
+  generateSchemaKnowledge,
+  getProfile,
+  getSchemaKnowledge,
+  removeProfileValue,
+} from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,7 +34,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { ChildProfile, RemovableProfileField } from '@/lib/types/domain'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import type {
+  ChildProfile,
+  RemovableProfileField,
+  SchemaKnowledgeRecord,
+} from '@/lib/types/domain'
+
+function normalizeSchemaName(schemaName: string) {
+  return schemaName.trim().toLowerCase().replace(/\s+/g, ' ')
+}
 
 type ProfileSectionHeadingProps = {
   title: string
@@ -160,6 +182,18 @@ export function Profile() {
     activeSchemas: false,
     interests: false,
   })
+  const [selectedSchemaName, setSelectedSchemaName] = useState<string | null>(null)
+  const [isSchemaKnowledgeDialogOpen, setIsSchemaKnowledgeDialogOpen] = useState(false)
+  const [isSchemaGenerationConfirmOpen, setIsSchemaGenerationConfirmOpen] = useState(false)
+  const [isSchemaKnowledgeLoading, setIsSchemaKnowledgeLoading] = useState(false)
+  const [schemaKnowledgeError, setSchemaKnowledgeError] = useState<string | null>(null)
+  const [schemaKnowledgeByName, setSchemaKnowledgeByName] = useState<
+    Record<string, SchemaKnowledgeRecord>
+  >({})
+
+  const selectedSchemaKnowledge = selectedSchemaName
+    ? schemaKnowledgeByName[normalizeSchemaName(selectedSchemaName)] || null
+    : null
 
   useEffect(() => {
     let isMounted = true
@@ -213,6 +247,83 @@ export function Profile() {
       )
     } finally {
       setIsRemovingValue(false)
+    }
+  }
+
+  async function handleOpenSchemaKnowledge(schemaName: string) {
+    const normalizedSchemaName = normalizeSchemaName(schemaName)
+
+    setSelectedSchemaName(schemaName)
+    setSchemaKnowledgeError(null)
+
+    const cachedKnowledge = schemaKnowledgeByName[normalizedSchemaName]
+
+    if (cachedKnowledge) {
+      setIsSchemaKnowledgeDialogOpen(true)
+      return
+    }
+
+    try {
+      setIsSchemaKnowledgeLoading(true)
+
+      const existingKnowledge = await getSchemaKnowledge({
+        schemaName,
+      })
+
+      setSchemaKnowledgeByName((previousKnowledge) => {
+        return {
+          ...previousKnowledge,
+          [normalizedSchemaName]: existingKnowledge,
+        }
+      })
+
+      setIsSchemaKnowledgeDialogOpen(true)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load schema details'
+
+      if (errorMessage.toLowerCase().includes('not found')) {
+        setIsSchemaGenerationConfirmOpen(true)
+        return
+      }
+
+      setSchemaKnowledgeError(errorMessage)
+      setIsSchemaKnowledgeDialogOpen(true)
+    } finally {
+      setIsSchemaKnowledgeLoading(false)
+    }
+  }
+
+  async function handleConfirmGenerateSchemaKnowledge() {
+    if (!selectedSchemaName) {
+      return
+    }
+
+    const normalizedSchemaName = normalizeSchemaName(selectedSchemaName)
+
+    try {
+      setIsSchemaKnowledgeLoading(true)
+      setSchemaKnowledgeError(null)
+
+      const generatedKnowledge = await generateSchemaKnowledge({
+        schemaName: selectedSchemaName,
+      })
+
+      setSchemaKnowledgeByName((previousKnowledge) => {
+        return {
+          ...previousKnowledge,
+          [normalizedSchemaName]: generatedKnowledge,
+        }
+      })
+
+      setIsSchemaGenerationConfirmOpen(false)
+      setIsSchemaKnowledgeDialogOpen(true)
+    } catch (err) {
+      setSchemaKnowledgeError(
+        err instanceof Error ? err.message : 'Failed to generate schema details',
+      )
+      setIsSchemaKnowledgeDialogOpen(true)
+    } finally {
+      setIsSchemaKnowledgeLoading(false)
     }
   }
 
@@ -333,12 +444,25 @@ export function Profile() {
             <div className="flex flex-wrap gap-2 pt-1">
               {profile.activeSchemas.map((schema) => (
                 <div key={schema} className="inline-flex items-center gap-1.5">
-                  <Badge
-                    variant="outline"
-                    className="text-sm px-3 py-1.5 border-primary text-primary"
-                  >
-                    {schema}
-                  </Badge>
+                  {isEditMode ? (
+                    <Badge
+                      variant="outline"
+                      className="text-sm px-3 py-1.5 border-primary text-primary"
+                    >
+                      {schema}
+                    </Badge>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleOpenSchemaKnowledge(schema)
+                      }}
+                      className="inline-flex rounded-full border border-primary px-3 py-1.5 text-sm text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={`Learn more about schema ${schema}`}
+                    >
+                      {schema}
+                    </button>
+                  )}
                   {isEditMode ? (
                     <Button
                       type="button"
@@ -426,6 +550,76 @@ export function Profile() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={isSchemaGenerationConfirmOpen}
+        onOpenChange={(open) => {
+          setIsSchemaGenerationConfirmOpen(open)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {`Do you want to learn more about ${selectedSchemaName || 'this schema'}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will generate a complete schema explanation from your research context and save
+              it for future use.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSchemaKnowledgeLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void handleConfirmGenerateSchemaKnowledge()
+              }}
+              disabled={isSchemaKnowledgeLoading}
+            >
+              {isSchemaKnowledgeLoading ? 'Generating...' : 'Generate explanation'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={isSchemaKnowledgeDialogOpen}
+        onOpenChange={(open) => {
+          setIsSchemaKnowledgeDialogOpen(open)
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedSchemaName || 'Schema details'}</DialogTitle>
+            <DialogDescription>
+              Evidence-aligned schema explanation generated from the development reference report.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] overflow-y-auto rounded-md border border-border/70 p-4 text-sm leading-relaxed">
+            {isSchemaKnowledgeLoading ? (
+              <div className="flex min-h-24 items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : schemaKnowledgeError ? (
+              <p className="text-destructive">{schemaKnowledgeError}</p>
+            ) : selectedSchemaKnowledge ? (
+              <ReactMarkdown>{selectedSchemaKnowledge.contentMarkdown}</ReactMarkdown>
+            ) : (
+              <p className="text-muted-foreground">No schema details available.</p>
+            )}
+          </div>
+
+          {selectedSchemaKnowledge ? (
+            <DialogFooter>
+              <p className="w-full text-xs text-muted-foreground">
+                Generated {new Date(selectedSchemaKnowledge.generatedAt).toLocaleString()} using{' '}
+                {selectedSchemaKnowledge.model}.
+              </p>
+            </DialogFooter>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

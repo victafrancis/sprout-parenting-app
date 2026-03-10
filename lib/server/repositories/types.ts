@@ -4,6 +4,7 @@ import type {
   CreateDailyLogInput,
   DailyLogEntry,
   RemoveProfileValueInput,
+  SchemaKnowledgeRecord,
   UpdateProfileCandidatesInput,
   WeeklyPlanJob,
   WeeklyPlanListItem,
@@ -52,4 +53,15 @@ export interface WeeklyPlanRepository {
     errorMessage: string
   }): Promise<WeeklyPlanJob>
   deleteWeeklyPlanObject(input: { childId: string; objectKey: string }): Promise<void>
+}
+
+export interface SchemaKnowledgeRepository {
+  getSchemaKnowledge(input: { schemaName: string }): Promise<SchemaKnowledgeRecord | null>
+  putSchemaKnowledge(input: {
+    schemaName: string
+    normalizedSchemaName: string
+    contentMarkdown: string
+    generatedAt: string
+    model: string
+  }): Promise<SchemaKnowledgeRecord>
 }

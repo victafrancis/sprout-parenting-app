@@ -41,7 +41,17 @@ We will use **AWS DynamoDB** with a flexible Single Table Design (STD).
 | --- | --- | --- | --- |
 | **Child Profile** | `USER#Yumi` | `PROFILE` | `birth_date` (String, `YYYY-MM-DD`), `milestones` (List), `schemas` (List), `interests` (List) |
 | **Daily Log** | `LOG#Yumi` | `DATE#2026-02-12` | `raw_text` (String), `key_takeaways` (List), `sentiment` (String) |
+| **Schema Knowledge (global cache-aside)** | `SCHEMA_KNOWLEDGE` | `SCHEMA#<normalizedSchemaName>` | `schema_name` (String), `normalized_schema_name` (String), `content_markdown` (String), `generated_at` (String ISO), `model` (String), `source` (String) |
 | **Weekly Plan Job Status (optional, later)** | `PLAN_JOB#Yumi` | `JOB#<requestId>` | `status` (String), `startedAt` (String), `completedAt` (String), `outputObjectKey` (String), `errorMessage` (String) |
+
+**Schema Knowledge Caching Pattern (Cache-Aside)**
+
+* The profile UI treats Active Schema pills as clickable knowledge lookups.
+* On click, the app first checks DynamoDB (`PK=SCHEMA_KNOWLEDGE`, `SK=SCHEMA#<normalized>`).
+* If found, it returns cached markdown immediately.
+* If not found, UI asks for confirmation (“Do you want to learn more about <schema>?”).
+* On confirm, Next.js API route calls OpenRouter with `baby-development-report.md` as grounding context, stores the generated markdown in DynamoDB, then returns it.
+* Subsequent requests reuse the cached global record across children.
 
 **S3 Storage Strategy**
 
@@ -70,6 +80,10 @@ The frontend acts as the "Control Plane" and relies on AI for frictionless data 
 
 2. **The Profile State:** View of the child's current milestones and schemas, fetched from DynamoDB.
 3. **The Play Plan:** A component-driven UI that fetches the most recent weekly plan markdown artifact from S3 (default: latest by `LastModified`) and maps headings/sections into interactive UI cards.
+4. **Schema Knowledge Modal (Active Schemas):**
+* **UX:** Clicking an Active Schema pill opens a confirm-first flow before first generation, then shows a modal with markdown explanation.
+* **Backend:** `GET /api/v1/schema-knowledge?schemaName=...` returns cache hit; `POST /api/v1/schema-knowledge` generates on miss and persists.
+* **Storage:** Global normalized cache entries in DynamoDB under `SCHEMA_KNOWLEDGE`.
 
 ### Security Strategy (The Bouncer & Display Case)
 
@@ -129,7 +143,7 @@ This is the "Worker" that runs in the background. It is isolated from the fronte
 
 ### Environment Variables
 
-* **Next.js:** `DATA_MODE`, `REGION`, `DYNAMODB_TABLE`, `S3_WEEKLY_PLAN_BUCKET`, `S3_WEEKLY_PLAN_PREFIX`, `ADMIN_PASSCODE`, `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_REMEMBER_TTL_DAYS`, `OPENROUTER_API_KEY`, `WEEKLY_PLAN_LAMBDA_FUNCTION_NAME`.
+* **Next.js:** `DATA_MODE`, `REGION`, `DYNAMODB_TABLE`, `S3_WEEKLY_PLAN_BUCKET`, `S3_WEEKLY_PLAN_PREFIX`, `ADMIN_PASSCODE`, `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_REMEMBER_TTL_DAYS`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `WEEKLY_PLAN_LAMBDA_FUNCTION_NAME`.
 * **Lambda:** `OPENROUTER_API_KEY` (for weekly plan generation), `DYNAMODB_TABLE`, `S3_BUCKET`, `S3_DEVELOPMENT_GUIDES_PREFIX`, `S3_WEEKLY_PLANS_PREFIX`, `EMAIL_SOURCE`.
 
 For Amplify-hosted Next.js SSR, treat Amplify Console variables as build-environment inputs and explicitly hand off required server runtime values during build (via `amplify.yml`) by writing an allowlisted set into `.env.production` before `next build`. This keeps SSR runtime access deterministic (`process.env` in API routes/server components) while preserving least-privilege control over which variables are exposed.

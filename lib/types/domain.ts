@@ -7,6 +7,15 @@ export type ChildProfile = {
   interests: string[]
 }
 
+export type SchemaKnowledgeRecord = {
+  schemaName: string
+  normalizedSchemaName: string
+  contentMarkdown: string
+  generatedAt: string
+  model: string
+  source: 'openrouter'
+}
+
 export type ProfileCandidateItem = {
   value: string
   reason: string

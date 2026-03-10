@@ -4,7 +4,7 @@
 - No active implementation task.
 
 ## Current Status
-- Active context reset after completing auth-mode two-state cleanup.
+- Active context cleared after completing schema knowledge modal and architecture/documentation updates.
 
 ## Watch Items
 - Dependency/security monitor: `minimatch` advisory (`GHSA-3ppc-4f35-3m26`) remains transitive via `@ducanh2912/next-pwa -> workbox-build -> glob`.
