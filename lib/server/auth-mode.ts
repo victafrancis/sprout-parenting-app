@@ -2,16 +2,23 @@ import { cookies } from 'next/headers'
 import { DEMO_COOKIE_NAME, SESSION_COOKIE_NAME } from '@/lib/server/auth/constants'
 import { verifySessionToken } from '@/lib/server/auth/session'
 
-export type RequestAccessMode = 'authenticated' | 'demo' | 'unauthenticated'
+export type RequestMode = 'authenticated' | 'demo'
 
-export async function getRequestMode() {
+export type RequestModeResult = {
+  mode: RequestMode
+  isDemo: boolean
+  isAuthenticated: boolean
+  isAdmin: boolean
+}
+
+export async function getRequestMode(): Promise<RequestModeResult> {
   const cookieStore = await cookies()
   const demoCookieEnabled =
     cookieStore.get(DEMO_COOKIE_NAME)?.value === 'true'
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
   const validSession = verifySessionToken(sessionCookie)
 
-  let mode: RequestAccessMode = 'demo'
+  let mode: RequestMode = 'demo'
 
   if (validSession) {
     mode = 'authenticated'
@@ -32,4 +39,8 @@ export async function getRequestMode() {
     isAuthenticated,
     isAdmin: isAuthenticated,
   }
+}
+
+export function useDemoModeForWrite(requestMode: RequestModeResult) {
+  return !requestMode.isAuthenticated
 }

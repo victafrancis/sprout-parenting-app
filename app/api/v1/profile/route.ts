@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getRequestMode } from '@/lib/server/auth-mode'
+import { getRequestMode, useDemoModeForWrite } from '@/lib/server/auth-mode'
 import { fail, ok } from '@/lib/server/http'
 import {
   getProfileService,
@@ -36,9 +36,6 @@ export async function GET(request: Request) {
     }
 
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
 
     const profile = await getProfileService({
       childId: parsed.data.childId,
@@ -59,11 +56,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
-
-    const useDemoModeForWrite = !mode.isAuthenticated
+    const shouldUseDemoModeForWrite = useDemoModeForWrite(mode)
 
     const body = await request.json()
     const parsed = patchSchema.safeParse(body)
@@ -77,7 +70,7 @@ export async function PATCH(request: Request) {
       milestones: parsed.data.milestones,
       activeSchemas: parsed.data.activeSchemas,
       interests: parsed.data.interests,
-      useDemoMode: useDemoModeForWrite,
+      useDemoMode: shouldUseDemoModeForWrite,
     })
 
     return ok(updatedProfile)
@@ -90,11 +83,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
-
-    const useDemoModeForWrite = !mode.isAuthenticated
+    const shouldUseDemoModeForWrite = useDemoModeForWrite(mode)
 
     const body = await request.json()
     const parsed = deleteSchema.safeParse(body)
@@ -107,7 +96,7 @@ export async function DELETE(request: Request) {
       childId: parsed.data.childId,
       field: parsed.data.field,
       value: parsed.data.value,
-      useDemoMode: useDemoModeForWrite,
+      useDemoMode: shouldUseDemoModeForWrite,
     })
 
     return ok(updatedProfile)

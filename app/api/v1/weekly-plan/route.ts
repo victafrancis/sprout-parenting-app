@@ -41,9 +41,6 @@ export async function GET(request: Request) {
     }
 
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
 
     await syncWeeklyPlanJobStatusService({
       childId: parsed.data.childId,
@@ -96,9 +93,6 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
 
     const body = await request.json()
     const parsed = patchSchema.safeParse(body)

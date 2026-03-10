@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getRequestMode } from '@/lib/server/auth-mode'
+import { getRequestMode, useDemoModeForWrite } from '@/lib/server/auth-mode'
 import { created, fail, ok } from '@/lib/server/http'
 import { getProfileService } from '@/lib/server/services/profile.service'
 import { extractDailyLogInsights } from '@/lib/server/services/daily-log-extraction.service'
@@ -71,9 +71,6 @@ export async function GET(request: Request) {
     }
 
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
 
     const result = await listDailyLogsService({
       childId: parsed.data.childId,
@@ -92,11 +89,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
-
-    const useDemoModeForWrite = !mode.isAuthenticated
+    const shouldUseDemoModeForWrite = useDemoModeForWrite(mode)
 
     const body = await request.json()
     const parsed = postSchema.safeParse(body)
@@ -107,7 +100,7 @@ export async function POST(request: Request) {
 
     const profile = await getProfileService({
       childId: parsed.data.childId,
-      useDemoMode: useDemoModeForWrite,
+      useDemoMode: shouldUseDemoModeForWrite,
     })
 
     const extractionResult = await extractDailyLogInsights({
@@ -121,7 +114,7 @@ export async function POST(request: Request) {
       rawText: parsed.data.rawText,
       planReference: parsed.data.planReference,
       extractionResult,
-      useDemoMode: useDemoModeForWrite,
+      useDemoMode: shouldUseDemoModeForWrite,
     })
 
     return created({
@@ -138,11 +131,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
-
-    const useDemoModeForWrite = !mode.isAuthenticated
+    const shouldUseDemoModeForWrite = useDemoModeForWrite(mode)
 
     const body = await request.json()
     const parsed = deleteSchema.safeParse(body)
@@ -154,7 +143,7 @@ export async function DELETE(request: Request) {
     await deleteDailyLogService({
       childId: parsed.data.childId,
       storageKey: parsed.data.storageKey,
-      useDemoMode: useDemoModeForWrite,
+      useDemoMode: shouldUseDemoModeForWrite,
     })
 
     return ok({ success: true })
@@ -167,11 +156,7 @@ export async function DELETE(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const mode = await getRequestMode()
-    if (mode.mode === 'unauthenticated') {
-      return fail(401, 'UNAUTHORIZED', 'Please login or continue in demo mode')
-    }
-
-    const useDemoModeForWrite = !mode.isAuthenticated
+    const shouldUseDemoModeForWrite = useDemoModeForWrite(mode)
 
     const body = await request.json()
     const parsedCandidateUpdate = patchCandidateSchema.safeParse(body)
@@ -186,7 +171,7 @@ export async function PATCH(request: Request) {
         childId: parsedEditNoteUpdate.data.childId,
         storageKey: parsedEditNoteUpdate.data.storageKey,
         rawText: parsedEditNoteUpdate.data.rawText,
-        useDemoMode: useDemoModeForWrite,
+        useDemoMode: shouldUseDemoModeForWrite,
       })
 
       return ok({ success: true })
@@ -202,7 +187,7 @@ export async function PATCH(request: Request) {
       milestones: parsedCandidateUpdate.data.milestones,
       activeSchemas: parsedCandidateUpdate.data.activeSchemas,
       interests: parsedCandidateUpdate.data.interests,
-      useDemoMode: useDemoModeForWrite,
+      useDemoMode: shouldUseDemoModeForWrite,
     })
 
     return ok(result)

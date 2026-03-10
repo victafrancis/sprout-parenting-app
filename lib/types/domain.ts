@@ -131,7 +131,7 @@ export type WeeklyPlanListItem = {
   lastModified: string | null
 }
 
-export type AuthMode = 'authenticated' | 'demo' | 'unauthenticated'
+export type AuthMode = 'authenticated' | 'demo'
 
 export type AuthStatusResponse = {
   mode: AuthMode

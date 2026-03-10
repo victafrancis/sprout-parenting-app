@@ -1,5 +1,64 @@
 # Context Archive
 
+## Active Context Migration (User requested: clear active context)
+
+### Previous Current Task
+- Completed auth-mode cleanup to enforce strict two-state access (`demo` + `authenticated`).
+
+### Previous Current Status
+- Updated auth mode typing and API route guards to remove stale `unauthenticated` checks.
+- Added shared helper for write-mode derivation in [`useDemoModeForWrite()`](lib/server/auth-mode.ts:43).
+- TypeScript check passes.
+
+### Previous Watch Items
+- Dependency/security monitor: `minimatch` advisory (`GHSA-3ppc-4f35-3m26`) remains transitive via `@ducanh2912/next-pwa -> workbox-build -> glob`.
+
+### Previous Open Decisions / Blockers
+- None.
+
+### Previous Immediate Next Steps
+1. Optional manual smoke test in browser for demo read paths and authenticated write paths.
+2. Await next feature request.
+
+### Previous Last Updated
+- 2026-03-10
+
+> Archived snapshot migrated from [`.cline/activeContext.md`](.cline/activeContext.md) on 2026-03-10.
+
+## Latest Session Update (Auth Mode Two-State Cleanup)
+- Executed approved cleanup to align auth behavior to a strict two-state model: `demo` and `authenticated`.
+
+### What changed
+- Updated auth typing and helper contracts in [`lib/server/auth-mode.ts`](lib/server/auth-mode.ts):
+  - `RequestMode` now only includes `"authenticated" | "demo"`.
+  - Added `RequestModeResult` return type for [`getRequestMode()`](lib/server/auth-mode.ts:13).
+  - Added shared helper [`useDemoModeForWrite()`](lib/server/auth-mode.ts:43) to centralize write-mode derivation.
+- Removed stale unreachable `"unauthenticated"` checks in:
+  - [`app/api/v1/profile/route.ts`](app/api/v1/profile/route.ts)
+  - [`app/api/v1/daily-logs/route.ts`](app/api/v1/daily-logs/route.ts)
+  - [`app/api/v1/weekly-plan/route.ts`](app/api/v1/weekly-plan/route.ts)
+- Updated frontend/domain auth union in [`lib/types/domain.ts`](lib/types/domain.ts:134) to match runtime behavior.
+
+### Validation
+- Ran [`npx tsc --noEmit`](package.json) with exit code `0`.
+
+### Result
+- Removed previous TS narrowing errors caused by unreachable `"unauthenticated"` comparisons while preserving demo-first UX and authenticated write guards.
+
+## Latest Session Update (Profile Section Hierarchy + Collapsible Defaults)
+- Completed profile UI refinements in [`components/Profile.tsx`](components/Profile.tsx) to improve readability and scanning.
+
+### What changed
+- Strengthened section headers for clearer visual hierarchy.
+- Added per-section item counts in section headers.
+- Added collapsible behavior for Milestones, Active Schemas, and Interests.
+- Set those profile sections to be collapsed by default on load.
+
+### Result
+- Profile content is easier to scan at a glance, with clearer headers and compact-by-default sections that can be expanded on demand.
+
+> Archived snapshot migrated from [`.cline/activeContext.md`](.cline/activeContext.md) on 2026-03-10.
+
 ## Latest Session Update (First-Load Demo Mode Auth Fix)
 - Resolved issue where a brand-new browser session could briefly show unauthorized messaging instead of loading demo mode immediately.
 
