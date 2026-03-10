@@ -1,10 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { CircleHelp, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { type ReactNode, useEffect, useState } from 'react'
+import { ChevronDown, CircleHelp, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { getProfile, removeProfileValue } from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Tooltip,
@@ -30,53 +35,113 @@ type ProfileSectionHeadingProps = {
   tooltipText?: string
 }
 
-function ProfileSectionHeading({
+function ProfileSectionHelpTooltip({
   title,
   tooltipText,
 }: ProfileSectionHeadingProps) {
   const isMobile = useIsMobile()
 
+  if (!tooltipText) {
+    return null
+  }
+
+  if (isMobile) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 text-muted-foreground"
+            aria-label={`More info about ${title}`}
+          >
+            <CircleHelp className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-64 p-3 text-xs leading-relaxed">
+          {tooltipText}
+        </PopoverContent>
+      </Popover>
+    )
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 text-muted-foreground"
+          aria-label={`More info about ${title}`}
+        >
+          <CircleHelp className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-xs leading-relaxed">{tooltipText}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+function ProfileSectionHeading({
+  title,
+  tooltipText,
+}: ProfileSectionHeadingProps) {
   return (
     <div className="flex items-center gap-2">
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      {tooltipText ? (
-        isMobile ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 text-muted-foreground"
-                aria-label={`More info about ${title}`}
-              >
-                <CircleHelp className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-3 text-xs leading-relaxed">
-              {tooltipText}
-            </PopoverContent>
-          </Popover>
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 text-muted-foreground"
-                aria-label={`More info about ${title}`}
-              >
-                <CircleHelp className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs text-xs leading-relaxed">
-              {tooltipText}
-            </TooltipContent>
-          </Tooltip>
-        )
-      ) : null}
+      <ProfileSectionHelpTooltip title={title} tooltipText={tooltipText} />
     </div>
+  )
+}
+
+type CollapsibleProfileSectionProps = {
+  title: string
+  tooltipText: string
+  itemCount: number
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  children: ReactNode
+}
+
+function CollapsibleProfileSection({
+  title,
+  tooltipText,
+  itemCount,
+  isOpen,
+  onOpenChange,
+  children,
+}: CollapsibleProfileSectionProps) {
+  return (
+    <Collapsible open={isOpen} onOpenChange={onOpenChange}>
+      <div className="space-y-3 rounded-lg border border-border/70 bg-card/50 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-between rounded-md px-1 py-1 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-expanded={isOpen}
+            >
+              <span className="inline-flex items-center gap-2">
+                <span className="text-lg font-semibold tracking-tight text-foreground">{title}</span>
+                <Badge variant="secondary" className="px-2 py-0.5 text-xs font-semibold">
+                  {itemCount}
+                </Badge>
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                  isOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <ProfileSectionHelpTooltip title={title} tooltipText={tooltipText} />
+        </div>
+
+        <CollapsibleContent>{children}</CollapsibleContent>
+      </div>
+    </Collapsible>
   )
 }
 
@@ -90,6 +155,11 @@ export function Profile() {
     field: RemovableProfileField
     value: string
   } | null>(null)
+  const [expandedSections, setExpandedSections] = useState({
+    milestones: false,
+    activeSchemas: false,
+    interests: false,
+  })
 
   useEffect(() => {
     let isMounted = true
@@ -208,12 +278,21 @@ export function Profile() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <ProfileSectionHeading
-              title="Milestones"
-              tooltipText="Skills your child is developing or already showing, such as motor, language, and social abilities."
-            />
-            <div className="flex flex-wrap gap-2">
+          <CollapsibleProfileSection
+            title="Milestones"
+            tooltipText="Skills your child is developing or already showing, such as motor, language, and social abilities."
+            itemCount={profile.milestones.length}
+            isOpen={expandedSections.milestones}
+            onOpenChange={(isOpen) => {
+              setExpandedSections((previousSections) => {
+                return {
+                  ...previousSections,
+                  milestones: isOpen,
+                }
+              })
+            }}
+          >
+            <div className="flex flex-wrap gap-2 pt-1">
               {profile.milestones.map((milestone) => (
                 <div key={milestone} className="inline-flex items-center gap-1.5">
                   <Badge variant="secondary" className="text-sm px-3 py-1.5">
@@ -235,14 +314,23 @@ export function Profile() {
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleProfileSection>
 
-          <div className="space-y-3">
-            <ProfileSectionHeading
-              title="Active Schemas"
-              tooltipText="Current repeated learning and play patterns your child is showing. We use these patterns to tailor weekly activities."
-            />
-            <div className="flex flex-wrap gap-2">
+          <CollapsibleProfileSection
+            title="Active Schemas"
+            tooltipText="Current repeated learning and play patterns your child is showing. We use these patterns to tailor weekly activities."
+            itemCount={profile.activeSchemas.length}
+            isOpen={expandedSections.activeSchemas}
+            onOpenChange={(isOpen) => {
+              setExpandedSections((previousSections) => {
+                return {
+                  ...previousSections,
+                  activeSchemas: isOpen,
+                }
+              })
+            }}
+          >
+            <div className="flex flex-wrap gap-2 pt-1">
               {profile.activeSchemas.map((schema) => (
                 <div key={schema} className="inline-flex items-center gap-1.5">
                   <Badge
@@ -267,14 +355,23 @@ export function Profile() {
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleProfileSection>
 
-          <div className="space-y-3">
-            <ProfileSectionHeading
-              title="Interests"
-              tooltipText="Topics, objects, and activities your child is naturally drawn to right now."
-            />
-            <div className="flex flex-wrap gap-2">
+          <CollapsibleProfileSection
+            title="Interests"
+            tooltipText="Topics, objects, and activities your child is naturally drawn to right now."
+            itemCount={profile.interests.length}
+            isOpen={expandedSections.interests}
+            onOpenChange={(isOpen) => {
+              setExpandedSections((previousSections) => {
+                return {
+                  ...previousSections,
+                  interests: isOpen,
+                }
+              })
+            }}
+          >
+            <div className="flex flex-wrap gap-2 pt-1">
               {profile.interests.map((interest) => (
                 <div key={interest} className="inline-flex items-center gap-1.5">
                   <Badge className="text-sm px-3 py-1.5 bg-accent text-accent-foreground">
@@ -296,7 +393,7 @@ export function Profile() {
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleProfileSection>
         </div>
       </TooltipProvider>
 
