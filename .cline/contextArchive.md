@@ -1,5 +1,23 @@
 # Context Archive
 
+## Latest Session Update (Weekly Plan Demo Source List Refresh)
+- Completed update so local Weekly Plan demo views read the newly updated markdown files in newest-first order.
+
+### What changed
+- Updated mock weekly plan source list in [`MockWeeklyPlanRepository.getAvailablePlans()`](lib/server/repositories/mock/weekly-plan.repo.ts:138).
+- Replaced previous demo entries with:
+  - `demo-plan-3.md`
+  - `demo-plan-2.md`
+  - `demo-plan-1.md`
+- Preserved default-selection and active-plan fallback behavior in:
+  - [`selectObjectKey()`](lib/server/repositories/mock/weekly-plan.repo.ts:155)
+  - [`resolveActiveObjectKey()`](lib/server/repositories/mock/weekly-plan.repo.ts:171)
+
+### Result
+- Demo Weekly Plan list now loads the new files in newest-first order without changing selection semantics.
+
+> Archived snapshot migrated from [`.cline/activeContext.md`](.cline/activeContext.md) on 2026-03-13.
+
 ## Latest Session Update (Weekly Plan Active Plan Persistence + UI Status Controls)
 - Completed Active Plan feature for Weekly Plan with cross-device persistence and UI controls.
 

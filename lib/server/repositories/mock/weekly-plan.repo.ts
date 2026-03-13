@@ -140,14 +140,19 @@ export class MockWeeklyPlanRepository implements WeeklyPlanRepository {
 
     return [
       {
-        objectKey: `${childPrefix}test-weekly-plan-2.md`,
-        displayName: 'test-weekly-plan-2.md',
-        lastModified: '2026-02-17T16:00:00.000Z',
+        objectKey: `${childPrefix}demo-plan-3.md`,
+        displayName: 'demo-plan-3.md',
+        lastModified: '2026-03-10T16:00:00.000Z',
       },
       {
-        objectKey: `${childPrefix}weekly-plan.md`,
-        displayName: 'weekly-plan.md',
-        lastModified: '2026-02-10T16:00:00.000Z',
+        objectKey: `${childPrefix}demo-plan-2.md`,
+        displayName: 'demo-plan-2.md',
+        lastModified: '2026-03-03T16:00:00.000Z',
+      },
+      {
+        objectKey: `${childPrefix}demo-plan-1.md`,
+        displayName: 'demo-plan-1.md',
+        lastModified: '2026-02-24T16:00:00.000Z',
       },
     ]
   }
