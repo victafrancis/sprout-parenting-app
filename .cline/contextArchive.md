@@ -1,5 +1,33 @@
 # Context Archive
 
+## Latest Session Update (Weekly Plan Active Plan Persistence + UI Status Controls)
+- Completed Active Plan feature for Weekly Plan with cross-device persistence and UI controls.
+
+### What changed
+- Extended weekly plan payload model in [`WeeklyPlanMarkdownPayload`](lib/types/domain.ts:116) with `activeObjectKey`.
+- Expanded weekly plan repository contract in [`WeeklyPlanRepository`](lib/server/repositories/types.ts:40) with [`setActivePlanObjectKey()`](lib/server/repositories/types.ts:43).
+- Added AWS persistence/read resolution in [`AwsWeeklyPlanRepository`](lib/server/repositories/aws/weekly-plan.repo.ts:44):
+  - New state key: `PK=PLAN_STATE#<childId>`, `SK=ACTIVE_PLAN`
+  - Attributes: `activeObjectKey`, `updatedAt`
+  - Fallback behavior: if stored active plan is missing/invalid, fallback to latest and persist.
+- Added mock parity in [`MockWeeklyPlanRepository`](lib/server/repositories/mock/weekly-plan.repo.ts:18).
+- Added service logic in [`weekly-plan.service.ts`](lib/server/services/weekly-plan.service.ts:1):
+  - Manual set-active flow via [`setActiveWeeklyPlanService()`](lib/server/services/weekly-plan.service.ts:172)
+  - Automatic active-plan switch to newly generated latest plan in [`syncWeeklyPlanJobStatusService()`](lib/server/services/weekly-plan.service.ts:51)
+- Added authenticated `PUT` API action (`action: 'set-active'`) in [`/api/v1/weekly-plan`](app/api/v1/weekly-plan/route.ts:150).
+- Added client helper [`setActiveWeeklyPlan()`](lib/api/client.ts:237).
+- Updated UI in [`WeeklyPlan`](components/WeeklyPlan.tsx:438):
+  - Active Plan badge when current selection is active
+  - `Set as new Active Plan` button when viewing another plan
+  - Auto-generation toast for active-plan auto-switch
+  - Follow-up UX tweaks: compact active pill, top-row placement with Show options, and improved spacing above dropdown.
+- Updated architecture docs with new DynamoDB entity in [`architecture.md`](architecture.md:40).
+
+### Validation
+- Type check passed via [`npx tsc --noEmit`](package.json:6).
+
+> Archived snapshot migrated from [`.cline/activeContext.md`](.cline/activeContext.md) on 2026-03-12.
+
 ## Latest Session Update (Schema Knowledge on Demand Modal + Global Cache-Aside Generation)
 - Completed Active Schema “learn more” feature with global cache-aside AI generation and persistence.
 

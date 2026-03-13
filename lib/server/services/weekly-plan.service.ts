@@ -16,6 +16,21 @@ export async function getWeeklyPlanService(input: {
   })
 }
 
+function doesObjectKeyBelongToChildPlan(input: {
+  childId: string
+  objectKey: string
+  availablePlans: WeeklyPlanListItem[]
+}) {
+  const expectedPrefix = `plans/${input.childId}/`
+  if (!input.objectKey.startsWith(expectedPrefix)) {
+    return false
+  }
+
+  return input.availablePlans.some((plan) => {
+    return plan.objectKey === input.objectKey
+  })
+}
+
 function isPlanJobTimedOut(startedAt: string) {
   const startedAtMs = new Date(startedAt).getTime()
   if (Number.isNaN(startedAtMs)) {
@@ -68,6 +83,11 @@ export async function syncWeeklyPlanJobStatusService(input: {
   }
 
   if (latestPlanMs >= startedAtMs) {
+    await repository.setActivePlanObjectKey({
+      childId: input.childId,
+      objectKey: latestPlan.objectKey,
+    })
+
     return repository.putPlanJobCompleted({
       childId: input.childId,
       completedAt: new Date().toISOString(),
@@ -149,6 +169,35 @@ export async function deleteWeeklyPlanService(input: {
 }) {
   const repository = getWeeklyPlanRepository(Boolean(input.useDemoMode))
   await repository.deleteWeeklyPlanObject({
+    childId: input.childId,
+    objectKey: input.objectKey,
+  })
+}
+
+export async function setActiveWeeklyPlanService(input: {
+  childId: string
+  objectKey: string
+  useDemoMode?: boolean
+}) {
+  const repository = getWeeklyPlanRepository(Boolean(input.useDemoMode))
+  const availablePlans = await repository.listWeeklyPlans({ childId: input.childId })
+
+  if (
+    !doesObjectKeyBelongToChildPlan({
+      childId: input.childId,
+      objectKey: input.objectKey,
+      availablePlans,
+    })
+  ) {
+    throw new Error('Invalid weekly plan key for selected child')
+  }
+
+  await repository.setActivePlanObjectKey({
+    childId: input.childId,
+    objectKey: input.objectKey,
+  })
+
+  return repository.getWeeklyPlanMarkdown({
     childId: input.childId,
     objectKey: input.objectKey,
   })

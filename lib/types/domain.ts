@@ -116,6 +116,7 @@ export type RemoveProfileValueInput = {
 export type WeeklyPlanMarkdownPayload = {
   childId: string
   selectedObjectKey: string | null
+  activeObjectKey: string | null
   availablePlans: WeeklyPlanListItem[]
   markdown: string
   planJob: WeeklyPlanJob

@@ -17,7 +17,7 @@ graph TD
     UI -->|2. Extract JSON Data| AI_Front[OpenRouter API]
     UI -->|3. Store Structured Data| DDB[(AWS DynamoDB)]
     UI -->|4. Click 'Generate Weekly Plan'| API[Next.js API Route]
-    API -->|5. Invoke Async| Lambda[AWS Lambda Python]
+    API -->|5. Invoke Async| Lambda[AWS Lambda Typescript]
     
     Scheduler[EventBridge Scheduler] -->|6. Trigger (Sunday 8AM, later)| Lambda
     
@@ -42,6 +42,7 @@ We will use **AWS DynamoDB** with a flexible Single Table Design (STD).
 | **Child Profile** | `USER#Yumi` | `PROFILE` | `birth_date` (String, `YYYY-MM-DD`), `milestones` (List), `schemas` (List), `interests` (List) |
 | **Daily Log** | `LOG#Yumi` | `DATE#2026-02-12` | `raw_text` (String), `key_takeaways` (List), `sentiment` (String) |
 | **Schema Knowledge on Demand (global cache-aside)** | `SCHEMA_KNOWLEDGE` | `SCHEMA#<normalizedSchemaName>` | `schema_name` (String), `normalized_schema_name` (String), `content_markdown` (String), `generated_at` (String ISO), `model` (String), `source` (String) |
+| **Weekly Plan Active State** | `PLAN_STATE#Yumi` | `ACTIVE_PLAN` | `activeObjectKey` (String \| null), `updatedAt` (String ISO) |
 | **Weekly Plan Job Status (optional, later)** | `PLAN_JOB#Yumi` | `JOB#<requestId>` | `status` (String), `startedAt` (String), `completedAt` (String), `outputObjectKey` (String), `errorMessage` (String) |
 
 **Schema Knowledge on Demand Caching Pattern (Cache-Aside)**
@@ -170,7 +171,7 @@ For Amplify-hosted Next.js SSR, treat Amplify Console variables as build-environ
 
 ### Phase 4: The Brain (Day 5-6)
 
-* [ ] Write Python Lambda script to fetch 7 days of logs from DynamoDB.
+* [ ] Write Typescript Lambda script to fetch 7 days of logs from DynamoDB.
 * [ ] Connect Lambda to OpenRouter to synthesize weekly-plan markdown.
 * [ ] Write markdown artifact to `plans/<childId>/` in S3.
 * [ ] Expose manual trigger from Next.js API route (`POST /api/v1/weekly-plan/generate`).

@@ -9,6 +9,7 @@ import {
   deleteWeeklyPlan,
   generateWeeklyPlan,
   getWeeklyPlan,
+  setActiveWeeklyPlan,
   syncWeeklyPlanJobStatus,
 } from '@/lib/api/client'
 import ReactMarkdown from 'react-markdown'
@@ -439,6 +440,7 @@ export function WeeklyPlan() {
   const [content, setContent] = useState('')
   const [availablePlans, setAvailablePlans] = useState<WeeklyPlanListItem[]>([])
   const [selectedObjectKey, setSelectedObjectKey] = useState<string | null>(null)
+  const [activeObjectKey, setActiveObjectKey] = useState<string | null>(null)
   const [planJob, setPlanJob] = useState<WeeklyPlanJob>(createIdlePlanJob(CHILD_ID))
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -446,6 +448,7 @@ export function WeeklyPlan() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isStartingGeneration, setIsStartingGeneration] = useState(false)
   const [isDeletingPlan, setIsDeletingPlan] = useState(false)
+  const [isSettingActivePlan, setIsSettingActivePlan] = useState(false)
   const [collapsedSectionsById, setCollapsedSectionsById] = useState<
     Record<string, boolean>
   >({})
@@ -550,6 +553,9 @@ export function WeeklyPlan() {
 
   const isPlanGenerationInProgress = planJob.status === 'in_progress'
   const canDeleteSelectedPlan = Boolean(selectedObjectKey)
+  const isViewingActivePlan = Boolean(
+    selectedObjectKey && activeObjectKey && selectedObjectKey === activeObjectKey,
+  )
 
   useEffect(() => {
     setCollapsedSectionsById((previousCollapsedSectionsById) => {
@@ -606,6 +612,7 @@ export function WeeklyPlan() {
         if (isMounted) {
           setAvailablePlans(result.availablePlans)
           setSelectedObjectKey(result.selectedObjectKey)
+          setActiveObjectKey(result.activeObjectKey)
           setContent(result.markdown)
           setPlanJob(result.planJob)
         }
@@ -642,9 +649,10 @@ export function WeeklyPlan() {
             const refreshedWeeklyPlan = await getWeeklyPlan({ childId: CHILD_ID })
             setAvailablePlans(refreshedWeeklyPlan.availablePlans)
             setSelectedObjectKey(refreshedWeeklyPlan.selectedObjectKey)
+            setActiveObjectKey(refreshedWeeklyPlan.activeObjectKey)
             setContent(refreshedWeeklyPlan.markdown)
             setPlanJob(refreshedWeeklyPlan.planJob)
-            toast.success('New weekly plan generated.')
+            toast.success('New plan generated and set as Active Plan.')
           }
 
           if (syncedJob.status === 'failed') {
@@ -679,6 +687,7 @@ export function WeeklyPlan() {
 
       setAvailablePlans(result.availablePlans)
       setSelectedObjectKey(result.selectedObjectKey)
+      setActiveObjectKey(result.activeObjectKey)
       setContent(result.markdown)
       setPlanJob(result.planJob)
     } catch (err) {
@@ -724,6 +733,7 @@ export function WeeklyPlan() {
       const refreshedWeeklyPlan = await getWeeklyPlan({ childId: CHILD_ID })
       setAvailablePlans(refreshedWeeklyPlan.availablePlans)
       setSelectedObjectKey(refreshedWeeklyPlan.selectedObjectKey)
+      setActiveObjectKey(refreshedWeeklyPlan.activeObjectKey)
       setContent(refreshedWeeklyPlan.markdown)
       setPlanJob(refreshedWeeklyPlan.planJob)
       toast.success('Weekly plan deleted.')
@@ -733,6 +743,38 @@ export function WeeklyPlan() {
       )
     } finally {
       setIsDeletingPlan(false)
+    }
+  }
+
+  async function handleSetAsActivePlan() {
+    if (!selectedObjectKey) {
+      return
+    }
+
+    try {
+      setIsSettingActivePlan(true)
+      setError(null)
+
+      const updatedWeeklyPlan = await setActiveWeeklyPlan({
+        childId: CHILD_ID,
+        objectKey: selectedObjectKey,
+      })
+
+      setAvailablePlans(updatedWeeklyPlan.availablePlans)
+      setSelectedObjectKey(updatedWeeklyPlan.selectedObjectKey)
+      setActiveObjectKey(updatedWeeklyPlan.activeObjectKey)
+      setContent(updatedWeeklyPlan.markdown)
+      setPlanJob(updatedWeeklyPlan.planJob)
+
+      toast.success('Active Plan updated.')
+    } catch (setActiveError) {
+      setError(
+        setActiveError instanceof Error
+          ? setActiveError.message
+          : 'Unable to set active weekly plan',
+      )
+    } finally {
+      setIsSettingActivePlan(false)
     }
   }
 
@@ -807,45 +849,44 @@ export function WeeklyPlan() {
     <div className="p-4 max-w-4xl mx-auto pb-20">
       {!error ? (
         <div className="mb-4">
-          {availablePlans.length > 0 ? (
-            <Select
-              value={selectedObjectKey || undefined}
-              onValueChange={(value) => {
-                void handlePlanChange(value)
-              }}
-              disabled={isLoading || isPlanGenerationInProgress}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a weekly plan" />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePlans.map((plan) => (
-                  <SelectItem key={plan.objectKey} value={plan.objectKey}>
-                    {plan.displayName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
-
-          {planGeneratedOnLabel ? (
-            <p className="mt-2 text-sm font-medium text-foreground" role="note">
-              {`Plan Generated On: ${planGeneratedOnLabel.displayText}`}
-            </p>
-          ) : null}
-
-          <Collapsible className="mt-3">
-            <CollapsibleTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="gap-2">
-                <span>Show options</span>
-                {isPlanGenerationInProgress ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Generating
+          <Collapsible className="mb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedObjectKey ? (
+                isViewingActivePlan ? (
+                  <span className="inline-flex items-center rounded-md border border-emerald-600 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 dark:border-emerald-500/60 dark:bg-emerald-950/30 dark:text-emerald-200">
+                    Active Plan
                   </span>
-                ) : null}
-              </Button>
-            </CollapsibleTrigger>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      void handleSetAsActivePlan()
+                    }}
+                    disabled={
+                      isLoading ||
+                      isSettingActivePlan ||
+                      isDeletingPlan ||
+                      isStartingGeneration ||
+                      isPlanGenerationInProgress
+                    }
+                  >
+                    {isSettingActivePlan ? 'Setting active plan...' : 'Set as new Active Plan'}
+                  </Button>
+                )
+              ) : null}
+
+              <CollapsibleTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="gap-2">
+                  <span>Show options</span>
+                  {isPlanGenerationInProgress ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Generating
+                    </span>
+                  ) : null}
+                </Button>
+              </CollapsibleTrigger>
+            </div>
 
             <CollapsibleContent className="pt-3">
               <div className="flex flex-wrap gap-2">
@@ -890,6 +931,35 @@ export function WeeklyPlan() {
               </div>
             </CollapsibleContent>
           </Collapsible>
+
+          {availablePlans.length > 0 ? (
+            <div className="mt-1">
+              <Select
+                value={selectedObjectKey || undefined}
+                onValueChange={(value) => {
+                  void handlePlanChange(value)
+                }}
+                disabled={isLoading || isPlanGenerationInProgress}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a weekly plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePlans.map((plan) => (
+                    <SelectItem key={plan.objectKey} value={plan.objectKey}>
+                      {plan.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          {planGeneratedOnLabel ? (
+            <p className="mt-2 text-sm font-medium text-foreground" role="note">
+              {`Plan Generated On: ${planGeneratedOnLabel.displayText}`}
+            </p>
+          ) : null}
 
           {planJob.status === 'failed' && planJob.errorMessage ? (
             <p className="mt-2 text-sm text-destructive" role="alert">

@@ -11,9 +11,14 @@ import type { WeeklyPlanRepository } from '@/lib/server/repositories/types'
 import type { WeeklyPlanJob, WeeklyPlanListItem } from '@/lib/types/domain'
 
 const PLAN_JOB_SORT_KEY = 'STATE'
+const ACTIVE_PLAN_STATE_SORT_KEY = 'ACTIVE_PLAN'
 
 function getPlanJobPartitionKey(childId: string) {
   return `PLAN_JOB#${childId}`
+}
+
+function getActivePlanStatePartitionKey(childId: string) {
+  return `PLAN_STATE#${childId}`
 }
 
 function createIdlePlanJob(childId: string): WeeklyPlanJob {
@@ -57,11 +62,16 @@ export class AwsWeeklyPlanRepository implements WeeklyPlanRepository {
   async getWeeklyPlanMarkdown(input: { childId: string; objectKey?: string }) {
     const availablePlans = await this.listWeeklyPlans({ childId: input.childId })
     const selectedObjectKey = this.selectObjectKey(availablePlans, input.objectKey)
+    const activeObjectKey = await this.getResolvedActiveObjectKey({
+      childId: input.childId,
+      availablePlans,
+    })
 
     if (!selectedObjectKey) {
       return {
         childId: input.childId,
         selectedObjectKey: null,
+        activeObjectKey,
         availablePlans,
         markdown: '',
         planJob: await this.getPlanJob({ childId: input.childId }),
@@ -81,11 +91,34 @@ export class AwsWeeklyPlanRepository implements WeeklyPlanRepository {
     return {
       childId: input.childId,
       selectedObjectKey,
+      activeObjectKey,
       availablePlans,
       markdown,
       planJob: await this.getPlanJob({ childId: input.childId }),
       source: 's3' as const,
     }
+  }
+
+  async setActivePlanObjectKey(input: {
+    childId: string
+    objectKey: string | null
+  }): Promise<string | null> {
+    await dynamoDocClient.send(
+      new UpdateCommand({
+        TableName: serverConfig.dynamoTable,
+        Key: {
+          PK: getActivePlanStatePartitionKey(input.childId),
+          SK: ACTIVE_PLAN_STATE_SORT_KEY,
+        },
+        UpdateExpression: 'SET activeObjectKey = :activeObjectKey, updatedAt = :updatedAt',
+        ExpressionAttributeValues: {
+          ':activeObjectKey': input.objectKey,
+          ':updatedAt': new Date().toISOString(),
+        },
+      }),
+    )
+
+    return input.objectKey
   }
 
   async getPlanJob(input: { childId: string }): Promise<WeeklyPlanJob> {
@@ -266,5 +299,41 @@ export class AwsWeeklyPlanRepository implements WeeklyPlanRepository {
     }
 
     return availablePlans[0]?.objectKey ?? null
+  }
+
+  private async getResolvedActiveObjectKey(input: {
+    childId: string
+    availablePlans: WeeklyPlanListItem[]
+  }): Promise<string | null> {
+    const result = await dynamoDocClient.send(
+      new GetCommand({
+        TableName: serverConfig.dynamoTable,
+        Key: {
+          PK: getActivePlanStatePartitionKey(input.childId),
+          SK: ACTIVE_PLAN_STATE_SORT_KEY,
+        },
+      }),
+    )
+
+    const storedActiveObjectKey =
+      typeof result.Item?.activeObjectKey === 'string' ? result.Item.activeObjectKey : null
+
+    if (storedActiveObjectKey) {
+      const hasMatchingActivePlan = input.availablePlans.some((plan) => {
+        return plan.objectKey === storedActiveObjectKey
+      })
+
+      if (hasMatchingActivePlan) {
+        return storedActiveObjectKey
+      }
+    }
+
+    const fallbackActiveObjectKey = input.availablePlans[0]?.objectKey ?? null
+    await this.setActivePlanObjectKey({
+      childId: input.childId,
+      objectKey: fallbackActiveObjectKey,
+    })
+
+    return fallbackActiveObjectKey
   }
 }

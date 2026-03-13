@@ -40,6 +40,10 @@ export interface DailyLogRepository {
 export interface WeeklyPlanRepository {
   getWeeklyPlanMarkdown(input: { childId: string; objectKey?: string }): Promise<WeeklyPlanMarkdownPayload>
   listWeeklyPlans(input: { childId: string }): Promise<WeeklyPlanListItem[]>
+  setActivePlanObjectKey(input: {
+    childId: string
+    objectKey: string | null
+  }): Promise<string | null>
   getPlanJob(input: { childId: string }): Promise<WeeklyPlanJob>
   putPlanJobInProgress(input: { childId: string; startedAt: string }): Promise<WeeklyPlanJob>
   putPlanJobCompleted(input: {

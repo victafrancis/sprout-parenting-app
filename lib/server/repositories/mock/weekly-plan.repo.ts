@@ -16,6 +16,8 @@ function createMockPlanJob(childId: string): WeeklyPlanJob {
 }
 
 export class MockWeeklyPlanRepository implements WeeklyPlanRepository {
+  private activePlanObjectKeyByChildId = new Map<string, string | null>()
+
   async listWeeklyPlans(input: { childId: string }): Promise<WeeklyPlanListItem[]> {
     return this.getAvailablePlans(input.childId)
   }
@@ -23,11 +25,13 @@ export class MockWeeklyPlanRepository implements WeeklyPlanRepository {
   async getWeeklyPlanMarkdown(input: { childId: string; objectKey?: string }) {
     const availablePlans = await this.listWeeklyPlans({ childId: input.childId })
     const selectedObjectKey = this.selectObjectKey(availablePlans, input.objectKey)
+    const activeObjectKey = this.resolveActiveObjectKey(input.childId, availablePlans)
 
     if (!selectedObjectKey) {
       return {
         childId: input.childId,
         selectedObjectKey: null,
+        activeObjectKey,
         availablePlans,
         markdown: '',
         planJob: createMockPlanJob(input.childId),
@@ -43,6 +47,7 @@ export class MockWeeklyPlanRepository implements WeeklyPlanRepository {
       return {
         childId: input.childId,
         selectedObjectKey: null,
+        activeObjectKey,
         availablePlans,
         markdown: '',
         planJob: createMockPlanJob(input.childId),
@@ -56,11 +61,20 @@ export class MockWeeklyPlanRepository implements WeeklyPlanRepository {
     return {
       childId: input.childId,
       selectedObjectKey,
+      activeObjectKey,
       availablePlans,
       markdown,
       planJob: createMockPlanJob(input.childId),
       source: 'mock' as const,
     }
+  }
+
+  async setActivePlanObjectKey(input: {
+    childId: string
+    objectKey: string | null
+  }): Promise<string | null> {
+    this.activePlanObjectKeyByChildId.set(input.childId, input.objectKey)
+    return input.objectKey
   }
 
   async getPlanJob(input: { childId: string }): Promise<WeeklyPlanJob> {
@@ -152,5 +166,23 @@ export class MockWeeklyPlanRepository implements WeeklyPlanRepository {
     }
 
     return availablePlans[0]?.objectKey ?? null
+  }
+
+  private resolveActiveObjectKey(childId: string, availablePlans: WeeklyPlanListItem[]) {
+    const persistedActiveObjectKey = this.activePlanObjectKeyByChildId.get(childId)
+
+    if (persistedActiveObjectKey) {
+      const hasMatchingPlan = availablePlans.some((plan) => {
+        return plan.objectKey === persistedActiveObjectKey
+      })
+
+      if (hasMatchingPlan) {
+        return persistedActiveObjectKey
+      }
+    }
+
+    const fallbackActiveObjectKey = availablePlans[0]?.objectKey ?? null
+    this.activePlanObjectKeyByChildId.set(childId, fallbackActiveObjectKey)
+    return fallbackActiveObjectKey
   }
 }

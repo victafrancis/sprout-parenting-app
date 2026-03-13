@@ -234,6 +234,22 @@ export async function deleteWeeklyPlan(input: {
   })
 }
 
+export async function setActiveWeeklyPlan(input: {
+  childId: string
+  objectKey: string
+}) {
+  const payload = await fetchJson<WeeklyPlanMarkdownPayload>('/api/v1/weekly-plan', {
+    method: 'PUT',
+    body: JSON.stringify({
+      action: 'set-active',
+      childId: input.childId,
+      objectKey: input.objectKey,
+    }),
+  })
+
+  return payload.data
+}
+
 export async function getAuthStatus() {
   const payload = await fetchJson<AuthStatusResponse>('/api/auth/status')
   return payload.data

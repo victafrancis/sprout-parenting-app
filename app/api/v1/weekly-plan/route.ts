@@ -4,6 +4,7 @@ import { fail, ok } from '@/lib/server/http'
 import {
   deleteWeeklyPlanService,
   getWeeklyPlanService,
+  setActiveWeeklyPlanService,
   startWeeklyPlanGenerationService,
   syncWeeklyPlanJobStatusService,
 } from '@/lib/server/services/weekly-plan.service'
@@ -21,6 +22,12 @@ const postSchema = z.object({
 const patchSchema = z.object({
   action: z.literal('sync-job-status'),
   childId: z.string().min(1).default('Yumi'),
+})
+
+const putSchema = z.object({
+  action: z.literal('set-active'),
+  childId: z.string().min(1).default('Yumi'),
+  objectKey: z.string().min(1),
 })
 
 const deleteSchema = z.object({
@@ -137,5 +144,36 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error('DELETE /api/v1/weekly-plan failed', error)
     return fail(500, 'INTERNAL_ERROR', 'Unable to delete weekly plan')
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const mode = await getRequestMode()
+    if (!mode.isAuthenticated) {
+      return fail(403, 'FORBIDDEN', 'Only authenticated admin can set active plans')
+    }
+
+    const body = await request.json()
+    const parsed = putSchema.safeParse(body)
+
+    if (!parsed.success) {
+      return fail(400, 'VALIDATION_ERROR', 'Invalid request body')
+    }
+
+    const weeklyPlan = await setActiveWeeklyPlanService({
+      childId: parsed.data.childId,
+      objectKey: parsed.data.objectKey,
+      useDemoMode: false,
+    })
+
+    return ok(weeklyPlan)
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Invalid weekly plan key')) {
+      return fail(400, 'VALIDATION_ERROR', error.message)
+    }
+
+    console.error('PUT /api/v1/weekly-plan failed', error)
+    return fail(500, 'INTERNAL_ERROR', 'Unable to set active weekly plan')
   }
 }
