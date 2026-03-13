@@ -1,5 +1,70 @@
 # Context Archive
 
+## Latest Session Update (Activities Tab Final Polish + Plan Reference Logging)
+- Completed final Activities UX refinements and added per-activity plan-reference daily log flow.
+
+### What changed
+- Refined Activities header to a minimal control bar in [`components/Activities.tsx`](components/Activities.tsx:303):
+  - shows only left arrow, current day label, right arrow.
+  - removed extra header text/chips for a cleaner compact look.
+- Updated card presentation in [`components/Activities.tsx`](components/Activities.tsx:369):
+  - removed day pill from each card.
+  - kept `Activity N` badge aligned left.
+  - cards now fill available page height without bottom gap by using a full-height flex layout.
+- Hid per-card scrollbars while preserving scroll behavior in [`components/Activities.tsx`](components/Activities.tsx:399).
+- Added one log button per activity card (same pattern as Weekly Plan) in [`components/Activities.tsx`](components/Activities.tsx:372):
+  - reused [`ReferenceLogDialog`](components/weekly-plan/ReferenceLogDialog.tsx:1)
+  - reused [`PlanReferencePreviewDialog`](components/plan-reference/PlanReferencePreviewDialog.tsx:1)
+  - reused [`ProfileCandidateReviewDialog`](components/daily-log/ProfileCandidateReviewDialog.tsx:1)
+  - reused API flow via [`createDailyLog()`](lib/api/client.ts:95) and [`acceptDailyLogCandidates()`](lib/api/client.ts:121)
+  - reference payload now includes:
+    - `sectionTitle: "Weekly Activity Menu"`
+    - `subsectionTitle: <day>`
+    - `activityIndex`
+    - activity markdown snippet
+
+### Validation
+- Type check passed via [`npx tsc --noEmit`](package.json:6).
+
+### Result
+- Activities tab now has the final compact UI and full per-activity reference logging parity requested.
+
+> Archived snapshot migrated from [`.cline/activeContext.md`](.cline/activeContext.md) on 2026-03-13.
+
+## Latest Session Update (Activities Tab with Active Plan Day-Aware Menu + Swipe Navigation)
+- Completed implementation of a new Activities tab placed between Weekly Plan and Daily Log.
+
+### What changed
+- Added reusable weekly menu parsing utilities in [`lib/weekly-activity-menu.ts`](lib/weekly-activity-menu.ts):
+  - Parses `## Weekly Activity Menu` and per-day headings (`### Monday` ... `### Weekend`).
+  - Splits numbered day activities when present.
+  - Falls back to one full card when a day has non-numbered content (for example typical weekend sections).
+  - Resolves today into `Monday`-`Friday` or `Weekend` using `America/Toronto` timezone.
+  - Includes previous/next day helpers for horizontal navigation flow.
+- Added new Activities screen in [`components/Activities.tsx`](components/Activities.tsx):
+  - Loads active weekly plan markdown by first fetching weekly plan state and then loading `activeObjectKey` content.
+  - Shows current day activities by default.
+  - Supports dynamic equal split layout:
+    - 1 activity -> one full-height card
+    - 2 activities -> two equal-height cards
+    - 3 activities -> three equal-height cards
+  - Each card has its own internal scroll (`overflow-y-auto`) so long content does not scroll the whole page.
+  - Added swipe left/right gesture support plus explicit previous/next controls and direct day chips.
+  - Added polished UI treatment (gradient header, spacing, badges, card styling, clear empty/error states).
+- Updated tab shell in [`app/page.tsx`](app/page.tsx):
+  - Added `activities` tab state.
+  - Inserted Activities tab between Weekly Plan and Daily Log.
+  - Added Activities screen rendering route.
+
+### Validation
+- Build passed via [`npm run build`](package.json:7).
+- Type check passed via [`npx tsc --noEmit`](package.json:6).
+
+### Result
+- Activities now uses the Active Plan menu and date-aware day mapping (Sat/Sun -> Weekend), with dynamic card count and swipe-based day rotation.
+
+> Archived snapshot migrated from [`.cline/activeContext.md`](.cline/activeContext.md) on 2026-03-13.
+
 ## Latest Session Update (Weekly Plan Demo Source List Refresh)
 - Completed update so local Weekly Plan demo views read the newly updated markdown files in newest-first order.
 

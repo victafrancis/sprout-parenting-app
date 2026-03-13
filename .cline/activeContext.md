@@ -4,7 +4,7 @@
 - No active implementation task.
 
 ## Current Status
-- Active context cleared after archiving completed Weekly Plan demo source list refresh.
+- Active context cleared after archiving completed Activities tab final polish and plan-reference logging.
 
 ## Watch Items
 - Dependency/security monitor: `minimatch` advisory (`GHSA-3ppc-4f35-3m26`) remains transitive via `@ducanh2912/next-pwa -> workbox-build -> glob`.

@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BookOpen, User, Calendar } from 'lucide-react'
+import { BookOpen, User, Calendar, Sparkles } from 'lucide-react'
 import { DailyLog } from '@/components/DailyLog'
 import { Profile } from '@/components/Profile'
 import { WeeklyPlan } from '@/components/WeeklyPlan'
+import { Activities } from '@/components/Activities'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,7 @@ import {
 } from '@/lib/api/client'
 import type { AuthMode } from '@/lib/types/domain'
 
-type Tab = 'daily-log' | 'profile' | 'weekly-plan'
+type Tab = 'daily-log' | 'profile' | 'weekly-plan' | 'activities'
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<Tab>('weekly-plan')
@@ -148,6 +149,7 @@ export default function Page() {
         {activeTab === 'daily-log' && <DailyLog />}
         {activeTab === 'profile' && <Profile />}
         {activeTab === 'weekly-plan' && <WeeklyPlan />}
+        {activeTab === 'activities' && <Activities />}
       </main>
 
       {/* Bottom Navigation */}
@@ -163,6 +165,18 @@ export default function Page() {
           >
             <Calendar className="h-5 w-5" />
             <span className="text-xs font-medium">Weekly Plan</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('activities')}
+            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full border-t-4 transition-all ${
+              activeTab === 'activities'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            <Sparkles className="h-5 w-5" />
+            <span className="text-xs font-medium">Activities</span>
           </button>
 
           <button
