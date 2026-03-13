@@ -61,10 +61,14 @@ export class AwsWeeklyPlanRepository implements WeeklyPlanRepository {
 
   async getWeeklyPlanMarkdown(input: { childId: string; objectKey?: string }) {
     const availablePlans = await this.listWeeklyPlans({ childId: input.childId })
-    const selectedObjectKey = this.selectObjectKey(availablePlans, input.objectKey)
     const activeObjectKey = await this.getResolvedActiveObjectKey({
       childId: input.childId,
       availablePlans,
+    })
+    const selectedObjectKey = this.selectObjectKey({
+      availablePlans,
+      requestedObjectKey: input.objectKey,
+      activeObjectKey,
     })
 
     if (!selectedObjectKey) {
@@ -285,20 +289,24 @@ export class AwsWeeklyPlanRepository implements WeeklyPlanRepository {
     })
   }
 
-  private selectObjectKey(availablePlans: WeeklyPlanListItem[], requestedObjectKey?: string) {
-    if (!requestedObjectKey) {
-      return availablePlans[0]?.objectKey ?? null
+  private selectObjectKey(input: {
+    availablePlans: WeeklyPlanListItem[]
+    requestedObjectKey?: string
+    activeObjectKey: string | null
+  }) {
+    if (!input.requestedObjectKey) {
+      return input.activeObjectKey
     }
 
-    const matchingPlan = availablePlans.find((plan) => {
-      return plan.objectKey === requestedObjectKey
+    const matchingPlan = input.availablePlans.find((plan) => {
+      return plan.objectKey === input.requestedObjectKey
     })
 
     if (matchingPlan) {
       return matchingPlan.objectKey
     }
 
-    return availablePlans[0]?.objectKey ?? null
+    return input.activeObjectKey
   }
 
   private async getResolvedActiveObjectKey(input: {
