@@ -77,7 +77,6 @@ export function Activities() {
   const [activeDay, setActiveDay] = useState<ActivityDayKey>(
     getTodayActivityDayKey(ACTIVITIES_TIMEZONE),
   )
-  const [touchStartX, setTouchStartX] = useState<number | null>(null)
   const [isReferenceLogDialogOpen, setIsReferenceLogDialogOpen] = useState(false)
   const [pendingReferenceLogContext, setPendingReferenceLogContext] =
     useState<PendingReferenceLogContext | null>(null)
@@ -272,31 +271,6 @@ export function Activities() {
     setActiveDay((currentDay) => getPreviousActivityDay(currentDay))
   }
 
-  function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
-    const touch = event.touches[0]
-    setTouchStartX(touch.clientX)
-  }
-
-  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
-    if (touchStartX === null) {
-      return
-    }
-
-    const touch = event.changedTouches[0]
-    const deltaX = touch.clientX - touchStartX
-    const swipeThreshold = 40
-
-    if (deltaX <= -swipeThreshold) {
-      moveToNextDay()
-    }
-
-    if (deltaX >= swipeThreshold) {
-      moveToPreviousDay()
-    }
-
-    setTouchStartX(null)
-  }
-
   const showEmptyActivitiesState = !isLoading && !error && currentDayActivities.length === 0
 
   return (
@@ -319,11 +293,7 @@ export function Activities() {
         </CardContent>
       </Card>
 
-      <div
-        className="flex-1 min-h-0"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      <div className="flex-1 min-h-0">
         {isLoading ? (
           <div className="h-full flex items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
