@@ -336,7 +336,7 @@ export function Activities() {
                   key={`${activeDay}-activity-${activityIndex + 1}`}
                   className="h-full overflow-hidden border-border/80 bg-card/80 backdrop-blur-sm shadow-sm"
                 >
-                  <CardHeader className="pb-2">
+                  <CardHeader className="px-4 pt-3 pb-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="secondary">Activity {activityIndex + 1}</Badge>
                       <Button
@@ -366,7 +366,7 @@ export function Activities() {
                     </div>
                   </CardHeader>
 
-                  <CardContent className="h-[calc(100%-3.25rem)] overflow-y-auto pr-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0">
+                  <CardContent className="h-[calc(100%-3rem)] px-4 pb-4 overflow-y-auto pr-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0">
                     <ReactMarkdown components={activityMarkdownComponents}>
                       {activityMarkdown}
                     </ReactMarkdown>
